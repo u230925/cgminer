@@ -282,7 +282,6 @@ static char *opt_set_avalon8_fan;
 static char *opt_set_avalon8_voltage_level;
 static char *opt_set_avalon8_voltage_level_offset;
 static char *opt_set_avalon8_freq;
-static char *opt_set_avalon8_asic_otp;
 #endif
 #ifdef USE_AVALON_MINER
 static char *opt_set_avalonm_voltage;
@@ -1639,9 +1638,6 @@ static struct opt_table opt_config_table[] = {
 	OPT_WITH_ARG("--avalon8-spdhigh",
 		     set_int_0_to_3, opt_show_intval, &opt_avalon8_spdhigh,
 		     "Set Avalon8 spdhigh, range 0-3."),
-	OPT_WITH_CBARG("--avalon8-cinfo-asic",
-		     set_avalon8_asic_otp, NULL, &opt_set_avalon8_asic_otp,
-		     "Set Avalon8 cinfo asic index, range:[0, 25], step: 1"),
 	OPT_WITH_ARG("--avalon8-pid-p",
 		     set_int_0_to_9999, opt_show_intval, &opt_avalon8_pid_p,
 		     "Set Avalon8 pid-p, range 0-9999."),

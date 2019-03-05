@@ -1828,7 +1828,7 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 		ret = info->pending_diff1;
 		info->pending_diff1 = 0;
 	}
-	return ret * 0xffffffffull;
+	return ret * 0x100000000ull;
 }
 
 static float avalon8_hash_cal(struct cgpu_info *avalon8, int modular_id)

@@ -1169,145 +1169,6 @@ static int check_module_exist(struct cgpu_info *avalon8, uint8_t mm_dna[AVA8_MM_
 	return 0;
 }
 
-static void detect_modules(struct cgpu_info *avalon8)
-{
-	struct avalon8_info *info = avalon8->device_data;
-	struct avalon8_pkg send_pkg;
-	struct avalon8_ret ret_pkg;
-	uint32_t tmp;
-	int i, j, k, err, rlen;
-	uint8_t dev_index;
-	uint8_t rbuf[AVA8_AUC_P_SIZE];
-
-	/* Detect new modules here */
-	for (i = 1; i < AVA8_DEFAULT_MODULARS + 1; i++) {
-		if (info->enable[i])
-			continue;
-
-		/* Send out detect pkg */
-		applog(LOG_DEBUG, "%s-%d: AVA8_P_DETECT ID[%d]",
-		       avalon8->drv->name, avalon8->device_id, i);
-		memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
-		tmp = be32toh(i); /* ID */
-		memcpy(send_pkg.data + 28, &tmp, 4);
-		avalon8_init_pkg(&send_pkg, AVA8_P_DETECT, 1, 1);
-		err = avalon8_iic_xfer_pkg(avalon8, AVA8_MODULE_BROADCAST, &send_pkg, &ret_pkg);
-		if (err == AVA8_SEND_OK) {
-			if (decode_pkg(avalon8, &ret_pkg, AVA8_MODULE_BROADCAST)) {
-				applog(LOG_DEBUG, "%s-%d: Should be AVA8_P_ACKDETECT(%d), but %d",
-				       avalon8->drv->name, avalon8->device_id, AVA8_P_ACKDETECT, ret_pkg.type);
-				continue;
-			}
-		}
-
-		if (err != AVA8_SEND_OK) {
-			applog(LOG_DEBUG, "%s-%d: AVA8_P_DETECT: Failed AUC xfer data with err %d",
-					avalon8->drv->name, avalon8->device_id, err);
-			break;
-		}
-
-		applog(LOG_DEBUG, "%s-%d: Module detect ID[%d]: %d",
-		       avalon8->drv->name, avalon8->device_id, i, ret_pkg.type);
-		if (ret_pkg.type != AVA8_P_ACKDETECT)
-			break;
-
-		if (check_module_exist(avalon8, ret_pkg.data))
-			continue;
-
-		/* Check count of modulars */
-		if (i == AVA8_DEFAULT_MODULARS) {
-			applog(LOG_NOTICE, "You have connected more than %d machines. This is discouraged.", (AVA8_DEFAULT_MODULARS - 1));
-			info->conn_overloaded = true;
-			break;
-		} else
-			info->conn_overloaded = false;
-
-		memcpy(info->mm_version[i], ret_pkg.data + AVA8_MM_DNA_LEN, AVA8_MM_VER_LEN);
-		info->mm_version[i][AVA8_MM_VER_LEN] = '\0';
-		for (dev_index = 0; dev_index < (sizeof(avalon8_dev_table) / sizeof(avalon8_dev_table[0])); dev_index++) {
-			if (!strncmp((char *)&(info->mm_version[i]), (char *)(avalon8_dev_table[dev_index].dev_id_str), 3)) {
-				info->mod_type[i] = avalon8_dev_table[dev_index].mod_type;
-				info->miner_count[i] = avalon8_dev_table[dev_index].miner_count;
-				info->asic_count[i] = avalon8_dev_table[dev_index].asic_count;
-				info->vin_adc_ratio[i] = avalon8_dev_table[dev_index].vin_adc_ratio;
-				info->vout_adc_ratio[i] = avalon8_dev_table[dev_index].vout_adc_ratio;
-				break;
-			}
-		}
-		if (dev_index == (sizeof(avalon8_dev_table) / sizeof(avalon8_dev_table[0]))) {
-			applog(LOG_NOTICE, "%s-%d: The modular version %s cann't be support",
-				       avalon8->drv->name, avalon8->device_id, info->mm_version[i]);
-			break;
-		}
-
-		info->enable[i] = 1;
-		cgtime(&info->elapsed[i]);
-		memcpy(info->mm_dna[i], ret_pkg.data, AVA8_MM_DNA_LEN);
-		memcpy(&tmp, ret_pkg.data + AVA8_MM_DNA_LEN + AVA8_MM_VER_LEN, 4);
-		tmp = be32toh(tmp);
-		info->total_asics[i] = tmp;
-		info->temp_overheat[i] = AVA8_DEFAULT_TEMP_OVERHEAT;
-		info->temp_target[i] = opt_avalon8_temp_target;
-		info->fan_pct[i] = opt_avalon8_fan_min;
-		for (j = 0; j < info->miner_count[i]; j++) {
-			info->set_voltage_level[i][j] = opt_avalon8_voltage_level;
-			info->get_voltage[i][j] = 0;
-			info->get_vin[i][j] = 0;
-
-			for (k = 0; k < info->asic_count[i]; k++)
-				info->temp[i][j][k] = -273;
-
-			for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++)
-				info->set_frequency[i][j][k] = avalon8_dev_table[dev_index].set_freq[k];
-		}
-
-		info->freq_mode[i] = AVA8_FREQ_INIT_MODE;
-		memset(info->get_pll[i], 0, sizeof(uint32_t) * info->miner_count[i] * AVA8_DEFAULT_PLL_CNT);
-
-		info->led_indicator[i] = 0;
-		info->cutoff[i] = 0;
-		info->fan_cpm[i] = 0;
-		info->temp_mm[i] = -273;
-		info->local_works[i] = 0;
-		info->hw_works[i] = 0;
-
-		/*PID controller*/
-		info->pid_u[i] = opt_avalon8_fan_min;
-		info->pid_p[i] = opt_avalon8_pid_p;
-		info->pid_i[i] = opt_avalon8_pid_i;
-		info->pid_d[i] = opt_avalon8_pid_d;
-		info->pid_e[i][0] = 0;
-		info->pid_e[i][1] = 0;
-		info->pid_e[i][2] = 0;
-		info->pid_0[i] = 0;
-
-		for (j = 0; j < info->miner_count[i]; j++) {
-			memset(info->chip_matching_work[i][j], 0, sizeof(uint64_t) * info->asic_count[i]);
-			info->local_works_i[i][j] = 0;
-			info->hw_works_i[i][j] = 0;
-			info->error_code[i][j] = 0;
-			info->error_crc[i][j] = 0;
-		}
-		info->error_code[i][j] = 0;
-		info->error_polling_cnt[i] = 0;
-		info->power_good[i] = 0;
-		memset(info->pmu_version[i], 0, sizeof(char) * 5 * AVA8_DEFAULT_PMU_CNT);
-		info->diff1[i] = 0;
-
-		applog(LOG_NOTICE, "%s-%d: New module detected! ID[%d-%x]",
-		       avalon8->drv->name, avalon8->device_id, i, info->mm_dna[i][AVA8_MM_DNA_LEN - 1]);
-
-		/* Tell MM, it has been detected */
-		memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
-		memcpy(send_pkg.data, info->mm_dna[i],  AVA8_MM_DNA_LEN);
-		avalon8_init_pkg(&send_pkg, AVA8_P_SYNC, 1, 1);
-		avalon8_iic_xfer_pkg(avalon8, i, &send_pkg, &ret_pkg);
-		/* Keep the usb buffer is empty */
-		usb_buffer_clear(avalon8);
-		usb_read(avalon8, (char *)rbuf, AVA8_AUC_P_SIZE, &rlen, C_AVA8_READ);
-	}
-}
-
 static void detach_module(struct cgpu_info *avalon8, int addr)
 {
 	struct avalon8_info *info = avalon8->device_data;
@@ -1700,6 +1561,157 @@ static void avalon8_sswork_flush(struct cgpu_info *avalon8)
 	cg_wunlock(&info->update_lock);
 }
 
+static void detect_modules(struct cgpu_info *avalon8)
+{
+	struct avalon8_info *info = avalon8->device_data;
+	struct avalon8_pkg send_pkg;
+	struct avalon8_ret ret_pkg;
+	uint32_t tmp;
+	int i, j, k, err, rlen;
+	uint8_t dev_index;
+	uint8_t rbuf[AVA8_AUC_P_SIZE];
+
+	/* Detect new modules here */
+	for (i = 1; i < AVA8_DEFAULT_MODULARS + 1; i++) {
+		if (info->enable[i])
+			continue;
+
+		/* Send out detect pkg */
+		applog(LOG_DEBUG, "%s-%d: AVA8_P_DETECT ID[%d]",
+		       avalon8->drv->name, avalon8->device_id, i);
+		memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
+		tmp = be32toh(i); /* ID */
+		memcpy(send_pkg.data + 28, &tmp, 4);
+		avalon8_init_pkg(&send_pkg, AVA8_P_DETECT, 1, 1);
+		err = avalon8_iic_xfer_pkg(avalon8, AVA8_MODULE_BROADCAST, &send_pkg, &ret_pkg);
+		if (err == AVA8_SEND_OK) {
+			if (decode_pkg(avalon8, &ret_pkg, AVA8_MODULE_BROADCAST)) {
+				applog(LOG_DEBUG, "%s-%d: Should be AVA8_P_ACKDETECT(%d), but %d",
+				       avalon8->drv->name, avalon8->device_id, AVA8_P_ACKDETECT, ret_pkg.type);
+				continue;
+			}
+		}
+
+		if (err != AVA8_SEND_OK) {
+			applog(LOG_DEBUG, "%s-%d: AVA8_P_DETECT: Failed AUC xfer data with err %d",
+					avalon8->drv->name, avalon8->device_id, err);
+			break;
+		}
+
+		applog(LOG_DEBUG, "%s-%d: Module detect ID[%d]: %d",
+		       avalon8->drv->name, avalon8->device_id, i, ret_pkg.type);
+		if (ret_pkg.type != AVA8_P_ACKDETECT)
+			break;
+
+		if (check_module_exist(avalon8, ret_pkg.data))
+			continue;
+
+		/* Check count of modulars */
+		if (i == AVA8_DEFAULT_MODULARS) {
+			applog(LOG_NOTICE, "You have connected more than %d machines. This is discouraged.", (AVA8_DEFAULT_MODULARS - 1));
+			info->conn_overloaded = true;
+			break;
+		} else
+			info->conn_overloaded = false;
+
+		memcpy(info->mm_version[i], ret_pkg.data + AVA8_MM_DNA_LEN, AVA8_MM_VER_LEN);
+		info->mm_version[i][AVA8_MM_VER_LEN] = '\0';
+		for (dev_index = 0; dev_index < (sizeof(avalon8_dev_table) / sizeof(avalon8_dev_table[0])); dev_index++) {
+			if (!strncmp((char *)&(info->mm_version[i]), (char *)(avalon8_dev_table[dev_index].dev_id_str), 3)) {
+				info->mod_type[i] = avalon8_dev_table[dev_index].mod_type;
+				info->miner_count[i] = avalon8_dev_table[dev_index].miner_count;
+				info->asic_count[i] = avalon8_dev_table[dev_index].asic_count;
+				info->vin_adc_ratio[i] = avalon8_dev_table[dev_index].vin_adc_ratio;
+				info->vout_adc_ratio[i] = avalon8_dev_table[dev_index].vout_adc_ratio;
+				break;
+			}
+		}
+		if (dev_index == (sizeof(avalon8_dev_table) / sizeof(avalon8_dev_table[0]))) {
+			applog(LOG_NOTICE, "%s-%d: The modular version %s cann't be support",
+				       avalon8->drv->name, avalon8->device_id, info->mm_version[i]);
+			break;
+		}
+
+		info->enable[i] = 1;
+		cgtime(&info->elapsed[i]);
+		memcpy(info->mm_dna[i], ret_pkg.data, AVA8_MM_DNA_LEN);
+		memcpy(&tmp, ret_pkg.data + AVA8_MM_DNA_LEN + AVA8_MM_VER_LEN, 4);
+		tmp = be32toh(tmp);
+		info->total_asics[i] = tmp;
+		info->temp_overheat[i] = AVA8_DEFAULT_TEMP_OVERHEAT;
+		info->temp_target[i] = opt_avalon8_temp_target;
+		info->fan_pct[i] = opt_avalon8_fan_min;
+		for (j = 0; j < info->miner_count[i]; j++) {
+			info->set_voltage_level[i][j] = opt_avalon8_voltage_level;
+			info->get_voltage[i][j] = 0;
+			info->get_vin[i][j] = 0;
+
+			for (k = 0; k < info->asic_count[i]; k++)
+				info->temp[i][j][k] = -273;
+
+			for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++)
+				info->set_frequency[i][j][k] = avalon8_dev_table[dev_index].set_freq[k];
+		}
+
+		info->freq_mode[i] = AVA8_FREQ_INIT_MODE;
+		memset(info->get_pll[i], 0, sizeof(uint32_t) * info->miner_count[i] * AVA8_DEFAULT_PLL_CNT);
+
+		info->led_indicator[i] = 0;
+		info->cutoff[i] = 0;
+		info->fan_cpm[i] = 0;
+		info->temp_mm[i] = -273;
+		info->local_works[i] = 0;
+		info->hw_works[i] = 0;
+
+		/*PID controller*/
+		info->pid_u[i] = opt_avalon8_fan_min;
+		info->pid_p[i] = opt_avalon8_pid_p;
+		info->pid_i[i] = opt_avalon8_pid_i;
+		info->pid_d[i] = opt_avalon8_pid_d;
+		info->pid_e[i][0] = 0;
+		info->pid_e[i][1] = 0;
+		info->pid_e[i][2] = 0;
+		info->pid_0[i] = 0;
+
+		for (j = 0; j < info->miner_count[i]; j++) {
+			memset(info->chip_matching_work[i][j], 0, sizeof(uint64_t) * info->asic_count[i]);
+			info->local_works_i[i][j] = 0;
+			info->hw_works_i[i][j] = 0;
+			info->error_code[i][j] = 0;
+			info->error_crc[i][j] = 0;
+		}
+		info->error_code[i][j] = 0;
+		info->error_polling_cnt[i] = 0;
+		info->power_good[i] = 0;
+		memset(info->pmu_version[i], 0, sizeof(char) * 5 * AVA8_DEFAULT_PMU_CNT);
+		info->diff1[i] = 0;
+
+		applog(LOG_NOTICE, "%s-%d: New module detected! ID[%d-%x]",
+		       avalon8->drv->name, avalon8->device_id, i, info->mm_dna[i][AVA8_MM_DNA_LEN - 1]);
+
+		/* Tell MM, it has been detected */
+		memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
+		memcpy(send_pkg.data, info->mm_dna[i],  AVA8_MM_DNA_LEN);
+		avalon8_init_pkg(&send_pkg, AVA8_P_SYNC, 1, 1);
+		avalon8_iic_xfer_pkg(avalon8, i, &send_pkg, &ret_pkg);
+		/* Keep the usb buffer is empty */
+		usb_buffer_clear(avalon8);
+		usb_read(avalon8, (char *)rbuf, AVA8_AUC_P_SIZE, &rlen, C_AVA8_READ);
+
+		avalon8_init_setting(avalon8, i);
+
+		avalon8_set_voltage_level(avalon8, i, info->set_voltage_level[i]);
+
+		for (j = 0; j < info->miner_count[i]; j++)
+			avalon8_set_freq(avalon8, i, j, info->set_frequency[i][j]);
+
+		if (opt_avalon8_smart_speed)
+			avalon8_set_ss_param(avalon8, i);
+
+		avalon8_set_finish(avalon8, i);
+	}
+}
+
 static void avalon8_sswork_update(struct cgpu_info *avalon8)
 {
 	struct avalon8_info *info = avalon8->device_data;
@@ -1770,7 +1782,6 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 		return -1;
 	}
 
-	/* Step 1: Stop polling and detach the device if there is no stratum in 3 minutes, network is down */
 	cgtime(&current);
 	if (tdiff(&current, &(info->last_stratum)) > 180.0) {
 		for (i = 1; i < AVA8_DEFAULT_MODULARS; i++) {
@@ -1782,81 +1793,23 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 		return 0;
 	}
 
-	/* Step 2: Try to detect new modules */
 	if ((tdiff(&current, &(info->last_detect)) > AVA8_MODULE_DETECT_INTERVAL) ||
 		!info->mm_count) {
 		cgtime(&info->last_detect);
 		detect_modules(avalon8);
 	}
 
-	/* Step 3: ASIC configrations (voltage and frequency) */
-	for (i = 1; i < AVA8_DEFAULT_MODULARS; i++) {
-		if (!info->enable[i])
-			continue;
-
-		update_settings = false;
-
-		/* Check temperautre */
-		temp_max = get_temp_max(info, i);
-
-		/* Enter too hot */
-		if (temp_max >= info->temp_overheat[i])
-			info->cutoff[i] = 1;
-
-		/* Exit too hot */
-		if (info->cutoff[i] && (temp_max <= (info->temp_overheat[i] - 10)))
-			info->cutoff[i] = 0;
-
-		switch (info->freq_mode[i]) {
-			case AVA8_FREQ_INIT_MODE:
-				update_settings = true;
-				/* Make sure to send configuration first */
-				thr->work_update = false;
-				for (j = 0; j < info->miner_count[i]; j++) {
-					for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++) {
-						if (opt_avalon8_freq[k] != AVA8_DEFAULT_FREQUENCY)
-							info->set_frequency[i][j][k] = opt_avalon8_freq[k];
-					}
-				}
-
-				avalon8_init_setting(avalon8, i);
-
-				info->freq_mode[i] = AVA8_FREQ_PLLADJ_MODE;
-				break;
-			case AVA8_FREQ_PLLADJ_MODE:
-				break;
-			default:
-				applog(LOG_ERR, "%s-%d-%d: Invalid frequency mode %d",
-						avalon8->drv->name, avalon8->device_id, i, info->freq_mode[i]);
-				break;
-		}
-		if (update_settings) {
-			cg_wlock(&info->update_lock);
-			avalon8_set_voltage_level(avalon8, i, info->set_voltage_level[i]);
-			for (j = 0; j < info->miner_count[i]; j++)
-				avalon8_set_freq(avalon8, i, j, info->set_frequency[i][j]);
-
-			if (opt_avalon8_smart_speed)
-				avalon8_set_ss_param(avalon8, i);
-
-			avalon8_set_finish(avalon8, i);
-			cg_wunlock(&info->update_lock);
-		}
-	}
-
-	/* Step 4: Polling  */
 	cg_rlock(&info->update_lock);
 	polling(avalon8);
 	cg_runlock(&info->update_lock);
 
-	/* Step 5: Calculate mm count */
 	for (i = 1; i < AVA8_DEFAULT_MODULARS; i++) {
 		if (info->enable[i])
 			count++;
 	}
 	info->mm_count = count;
 
-	/* Step 6: Calculate hashes. Use the diff1 value which is scaled by
+	/* Calculate hashes. Use the diff1 value which is scaled by
 	 * device diff and is usually lower than pool diff which will give a
 	 * more stable result, but remove diff rejected shares to more closely
 	 * approximate diff accepted values. */

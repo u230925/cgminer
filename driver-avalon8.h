@@ -76,8 +76,6 @@
 #define AVA8_DEFAULT_PID_TEMP_MIN	50
 #define AVA8_DEFAULT_PID_TEMP_MAX	100
 
-#define AVA8_DEFAULT_IIC_DETECT	false
-
 #define AVA8_PWM_MAX	0x3FF
 #define AVA8_DRV_DIFFMAX	2700
 #define AVA8_ASIC_TIMEOUT_CONST	419430400 /* (2^32 * 1000) / (256 * 40) */
@@ -90,7 +88,6 @@
 #define AVA8_AUC_P_SIZE		64
 
 #define AVA8_CONNECTER_AUC	1
-#define AVA8_CONNECTER_IIC	2
 
 /* avalon8 protocol package type from MM protocol.h */
 #define AVA8_MM_VER_LEN	15
@@ -203,7 +200,7 @@ struct avalon8_info {
 
 	struct i2c_ctx *i2c_slaves[AVA8_DEFAULT_MODULARS];
 
-	uint8_t connecter; /* AUC or IIC */
+	uint8_t connecter; /* AUC or Other */
 
 	/* For modulars */
 	bool enable[AVA8_DEFAULT_MODULARS];

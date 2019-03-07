@@ -279,8 +279,7 @@ static char *opt_set_avalon7_freq;
 #endif
 #ifdef USE_AVALON8
 static char *opt_set_avalon8_fan;
-static char *opt_set_avalon8_voltage_level;
-static char *opt_set_avalon8_voltage_level_offset;
+static char *opt_set_avalon8_voltage;
 static char *opt_set_avalon8_freq;
 #endif
 #ifdef USE_AVALON_MINER
@@ -1563,12 +1562,9 @@ static struct opt_table opt_config_table[] = {
 		     "Disable A3212 debug."),
 #endif
 #ifdef USE_AVALON8
-	OPT_WITH_CBARG("--avalon8-voltage-level",
-		     set_avalon8_voltage_level, NULL, &opt_set_avalon8_voltage_level,
-		     "Set Avalon8 default level of core voltage, range:[0, 15], step: 1"),
-	OPT_WITH_CBARG("--avalon8-voltage-level-offset",
-		     set_avalon8_voltage_level_offset, NULL, &opt_set_avalon8_voltage_level_offset,
-		     "Set Avalon8 default offset of core voltage level, range:[-2, 1], step: 1"),
+	OPT_WITH_CBARG("--avalon8-voltage",
+		     set_avalon8_voltage, NULL, &opt_set_avalon8_voltage,
+		     "Set Avalon8 default value of core voltage, range:[250, 500], step: 1"),
 	OPT_WITH_CBARG("--avalon8-freq",
 		     set_avalon8_freq, NULL, &opt_set_avalon8_freq,
 		     "Set Avalon8 default frequency, range:[25, 1200], step: 25, example: 800"),
@@ -1602,15 +1598,36 @@ static struct opt_table opt_config_table[] = {
 	OPT_WITH_ARG("--avalon8-th-init",
 		     set_int_0_to_65535, opt_show_intval, &opt_avalon8_th_init,
 		     "Set A3210 th init value"),
-	OPT_WITH_ARG("--avalon8-th-ms",
-		     set_int_0_to_65535, opt_show_intval, &opt_avalon8_th_ms,
-		     "Set A3210 th ms value"),
 	OPT_WITH_ARG("--avalon8-th-timeout",
 		     opt_set_uintval, opt_show_uintval, &opt_avalon8_th_timeout,
 		     "Set A3210 th timeout value"),
-	OPT_WITH_ARG("--avalon8-th-add",
-		     set_int_0_to_1, opt_show_intval, &opt_avalon8_th_add,
-		     "Set A3210 th add value"),
+	OPT_WITH_ARG("--avalon8-th-mssel",
+		     set_int_0_to_1, opt_show_intval, &opt_avalon8_th_mssel,
+		     "Set A3210 th mssel value"),
+	OPT_WITH_ARG("--avalon8-lv1-th-msadd",
+		     set_int_0_to_1, opt_show_intval, &opt_avalon8_lv1_th_msadd,
+		     "Set A3210 lv1 th msadd value"),
+	OPT_WITH_ARG("--avalon8-lv1-th-ms",
+		     set_int_0_to_65535, opt_show_intval, &opt_avalon8_lv1_th_ms,
+		     "Set A3210 lv1 th ms value"),
+	OPT_WITH_ARG("--avalon8-lv2-th-msadd",
+		     set_int_0_to_1, opt_show_intval, &opt_avalon8_lv2_th_msadd,
+		     "Set A3210 lv2 th msadd value"),
+	OPT_WITH_ARG("--avalon8-lv2-th-ms",
+		     set_int_0_to_65535, opt_show_intval, &opt_avalon8_lv2_th_ms,
+		     "Set A3210 lv2 th ms value"),
+	OPT_WITH_ARG("--avalon8-lv3-th-msadd",
+		     set_int_0_to_1, opt_show_intval, &opt_avalon8_lv3_th_msadd,
+		     "Set A3210 lv3 th msadd value"),
+	OPT_WITH_ARG("--avalon8-lv3-th-ms",
+		     set_int_0_to_65535, opt_show_intval, &opt_avalon8_lv3_th_ms,
+		     "Set A3210 lv3 th ms value"),
+	OPT_WITH_ARG("--avalon8-lv4-th-msadd",
+		     set_int_0_to_1, opt_show_intval, &opt_avalon8_lv4_th_msadd,
+		     "Set A3210 lv4 th msadd value"),
+	OPT_WITH_ARG("--avalon8-lv4-th-ms",
+		     set_int_0_to_65535, opt_show_intval, &opt_avalon8_lv4_th_ms,
+		     "Set A3210 lv4 th ms value"),
 	OPT_WITH_ARG("--avalon8-nonce-mask",
 		     set_int_24_to_32, opt_show_intval, &opt_avalon8_nonce_mask,
 		     "Set A3210 nonce mask, range 24-32."),
@@ -1626,14 +1643,14 @@ static struct opt_table opt_config_table[] = {
 	OPT_WITH_ARG("--avalon8-mux-h2l",
 		     set_int_0_to_1, opt_show_intval, &opt_avalon8_mux_h2l,
 		     "Set Avalon8 mux h2l, range 0-1."),
-	OPT_WITH_ARG("--avalon8-h2ltime0-spd",
-		     set_int_0_to_255, opt_show_intval, &opt_avalon8_h2ltime0_spd,
-		     "Set Avalon8 h2ltime0 spd, range 0-255."),
+	OPT_WITH_ARG("--avalon8-h2ltime-spd",
+		     set_int_0_to_255, opt_show_intval, &opt_avalon8_h2ltime_spd,
+		     "Set Avalon8 h2ltime spd, range 0-255."),
 	OPT_WITH_ARG("--avalon8-spdlow",
-		     set_int_0_to_3, opt_show_intval, &opt_avalon8_spdlow,
+		     set_int_0_to_4, opt_show_intval, &opt_avalon8_spdlow,
 		     "Set Avalon8 spdlow, range 0-3."),
 	OPT_WITH_ARG("--avalon8-spdhigh",
-		     set_int_0_to_3, opt_show_intval, &opt_avalon8_spdhigh,
+		     set_int_0_to_4, opt_show_intval, &opt_avalon8_spdhigh,
 		     "Set Avalon8 spdhigh, range 0-3."),
 	OPT_WITH_ARG("--avalon8-pid-p",
 		     set_int_0_to_9999, opt_show_intval, &opt_avalon8_pid_p,
@@ -7675,7 +7692,7 @@ void set_target(unsigned char *dest_target, double diff)
 
 #if defined (USE_AVALON2) || defined (USE_AVALON4) || defined (USE_AVALON7) || defined (USE_AVALON8) || defined (USE_AVALON_MINER) || defined (USE_HASHRATIO)
 bool submit_nonce2_nonce(struct thr_info *thr, struct pool *pool, struct pool *real_pool,
-			 uint32_t nonce2, uint32_t nonce,  uint32_t ntime)
+			 uint32_t nonce2, uint32_t nonce,  uint32_t ntime, uint32_t micro_job_id)
 {
 	const int thr_id = thr->id;
 	struct cgpu_info *cgpu = thr->cgpu;
@@ -7697,6 +7714,9 @@ bool submit_nonce2_nonce(struct thr_info *thr, struct pool *pool, struct pool *r
 	work->thr_id = thr_id;
 	work->work_block = work_block;
 	work->pool->works++;
+
+	work->micro_job_id = 1 << micro_job_id;
+	memcpy(work->data, &pool->vmask_001[work->micro_job_id], 4);
 
 	work->mined = true;
 	work->device_diff = MIN(drv->max_diff, work->work_difficulty);

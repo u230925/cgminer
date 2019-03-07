@@ -25,49 +25,49 @@
 #define AVA8_DEFAULT_TEMP_TARGET	90
 #define AVA8_DEFAULT_TEMP_OVERHEAT	105
 
-#define AVA8_DEFAULT_VOLTAGE_LEVEL_MIN	-15
-#define AVA8_DEFAULT_VOLTAGE_LEVEL_MAX	15
-#define AVA8_DEFAULT_VOLTAGE_LEVEL	-16
-
-#define AVA8_DEFAULT_VOLTAGE_LEVEL_OFFSET_MIN	-2
-#define AVA8_DEFAULT_VOLTAGE_LEVEL_OFFSET	0
-#define AVA8_DEFAULT_VOLTAGE_LEVEL_OFFSET_MAX	1
+#define AVA8_DEFAULT_VOLTAGE_MIN	250
+#define AVA8_DEFAULT_VOLTAGE_MAX	500
+#define AVA8_DEFAULT_VOLTAGE		320
 
 #define AVA8_DEFAULT_FREQUENCY_0M	0
-#define AVA8_DEFAULT_FREQUENCY_650M	650
-#define AVA8_DEFAULT_FREQUENCY_725M	725
-#define AVA8_DEFAULT_FREQUENCY_775M	775
-#define AVA8_DEFAULT_FREQUENCY_850M	850
+#define AVA8_DEFAULT_FREQUENCY_550M	550
 #define AVA8_DEFAULT_FREQUENCY_MAX	1200
 #define AVA8_DEFAULT_FREQUENCY		(AVA8_DEFAULT_FREQUENCY_MAX)
-#define AVA8_DEFAULT_FREQUENCY_SEL	3
+#define AVA8_DEFAULT_FREQUENCY_SEL	2
 
 #define AVA8_DEFAULT_MODULARS	7	/* Only support 6 modules maximum with one AUC */
-#define AVA8_DEFAULT_MINER_CNT	4
-#define AVA8_DEFAULT_ASIC_MAX	26
+#define AVA8_DEFAULT_MINER_CNT	1
+#define AVA8_DEFAULT_ASIC_MAX	1
 #define AVA8_DEFAULT_PLL_CNT	4
 #define AVA8_DEFAULT_PMU_CNT	2
-#define AVA8_DEFAULT_CORE_VOLT_CNT	8
+#define AVA8_DEFAULT_CORE_COUNT		59
 
 #define AVA8_DEFAULT_POLLING_DELAY	20 /* ms */
-#define AVA8_DEFAULT_NTIME_OFFSET	2
+#define AVA8_DEFAULT_NTIME_OFFSET	0
 
 #define AVA8_DEFAULT_SMART_SPEED	0
 
-#define AVA8_DEFAULT_TH_PASS	160
-#define AVA8_DEFAULT_TH_FAIL	8000
-#define AVA8_DEFAULT_TH_INIT	32767
-#define AVA8_DEFAULT_TH_ADD	1
-#define AVA8_DEFAULT_TH_MS	5
-#define AVA8_DEFAULT_TH_TIMEOUT	20000
+#define AVA8_DEFAULT_TH_PASS                   160
+#define AVA8_DEFAULT_TH_FAIL                   8000
+#define AVA8_DEFAULT_TH_INIT                   32767
+#define AVA8_DEFAULT_TH_MSSEL                  0
+#define AVA8_DEFAULT_TH_TIMEOUT                20000
+#define AVA8_DEFAULT_LV1_TH_MSADD              1
+#define AVA8_DEFAULT_LV1_TH_MS                 5
+#define AVA8_DEFAULT_LV2_TH_MSADD              0
+#define AVA8_DEFAULT_LV2_TH_MS                 0
+#define AVA8_DEFAULT_LV3_TH_MSADD              0
+#define AVA8_DEFAULT_LV3_TH_MS                 0
+#define AVA8_DEFAULT_LV4_TH_MSADD              0
+#define AVA8_DEFAULT_LV4_TH_MS                 0
 #define AVA8_DEFAULT_NONCE_MASK 24
 #define AVA8_DEFAULT_NONCE_CHECK	1
 #define AVA8_DEFAULT_MUX_L2H	0
 #define AVA8_DEFAULT_MUX_H2L	1
-#define AVA8_DEFAULT_H2LTIME0_SPD	3
+#define AVA8_DEFAULT_H2LTIME_SPD	3
 #define AVA8_DEFAULT_ROLL_ENABLE	1
-#define AVA8_DEFAULT_SPDLOW            0
-#define AVA8_DEFAULT_SPDHIGH           3
+#define AVA8_DEFAULT_SPDLOW            1
+#define AVA8_DEFAULT_SPDHIGH           4
 
 /* PID CONTROLLER*/
 #define AVA8_DEFAULT_PID_P		2
@@ -77,7 +77,7 @@
 #define AVA8_DEFAULT_PID_TEMP_MAX	100
 
 #define AVA8_PWM_MAX	0x3FF
-#define AVA8_DRV_DIFFMAX	2700
+#define AVA8_DRV_DIFFMAX	1
 #define AVA8_ASIC_TIMEOUT_CONST	419430400 /* (2^32 * 1000) / (256 * 40) */
 
 #define AVA8_MODULE_DETECT_INTERVAL	30 /* 30 s */
@@ -112,6 +112,7 @@
 #define AVA8_P_HEADER	0x15
 #define AVA8_P_TARGET	0x16
 #define AVA8_P_JOB_FIN	0x17
+#define AVA8_P_VMASK	0x19
 
 /* Broadcase or with I2C address */
 #define AVA8_P_SET			0x20
@@ -217,7 +218,6 @@ struct avalon8_info {
 	uint8_t miner_count[AVA8_DEFAULT_MODULARS];
 	uint8_t asic_count[AVA8_DEFAULT_MODULARS];
 
-	uint32_t freq_mode[AVA8_DEFAULT_MODULARS];
 	int led_indicator[AVA8_DEFAULT_MODULARS];
 	int fan_pct[AVA8_DEFAULT_MODULARS];
 	int fan_cpm[AVA8_DEFAULT_MODULARS];
@@ -225,8 +225,7 @@ struct avalon8_info {
 	int temp[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_ASIC_MAX];
 	int temp_mm[AVA8_DEFAULT_MODULARS];
 
-	uint32_t core_volt[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT] \
-			  [AVA8_DEFAULT_ASIC_MAX][AVA8_DEFAULT_CORE_VOLT_CNT];
+	uint32_t core_volt[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_ASIC_MAX];
 
 	uint8_t cutoff[AVA8_DEFAULT_MODULARS];
 	int temp_target[AVA8_DEFAULT_MODULARS];
@@ -240,15 +239,15 @@ struct avalon8_info {
 	int pid_e[AVA8_DEFAULT_MODULARS][3];
 	int pid_0[AVA8_DEFAULT_MODULARS];
 
-	int set_voltage_level[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
+	int set_voltage[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
 	uint32_t set_frequency[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_PLL_CNT];
-	uint32_t get_frequency[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_ASIC_MAX][AVA8_DEFAULT_PLL_CNT];
+	uint32_t get_frequency[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_PLL_CNT];
 
 	uint16_t get_vin[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
 	uint32_t get_voltage[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
 	uint32_t get_pll[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_PLL_CNT];
 
-	uint32_t get_asic[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_ASIC_MAX][6];
+	uint32_t get_asic[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_CORE_COUNT][2];
 
 	uint64_t local_works[AVA8_DEFAULT_MODULARS];
 	uint64_t local_works_i[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
@@ -266,6 +265,11 @@ struct avalon8_info {
 
 	uint16_t vin_adc_ratio[AVA8_DEFAULT_MODULARS];
 	uint16_t vout_adc_ratio[AVA8_DEFAULT_MODULARS];
+
+	uint16_t current_out[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
+	uint16_t current_top[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
+	uint16_t current_ioa[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
+	uint16_t current_iob[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT];
 
 	bool conn_overloaded;
 };
@@ -285,7 +289,7 @@ struct avalon8_dev_description {
 	uint8_t asic_count; /* asic count each miner, it should not great than AVA8_DEFAULT_ASIC_MAX */
 	uint16_t vin_adc_ratio;
 	uint16_t vout_adc_ratio;
-	int set_voltage_level;
+	int set_voltage;
 	uint16_t set_freq[AVA8_DEFAULT_PLL_CNT];
 };
 
@@ -297,8 +301,7 @@ struct avalon8_dev_description {
 
 extern char *set_avalon8_fan(char *arg);
 extern char *set_avalon8_freq(char *arg);
-extern char *set_avalon8_voltage_level(char *arg);
-extern char *set_avalon8_voltage_level_offset(char *arg);
+extern char *set_avalon8_voltage(char *arg);
 extern int opt_avalon8_temp_target;
 extern int opt_avalon8_polling_delay;
 extern int opt_avalon8_aucspeed;
@@ -309,14 +312,21 @@ extern int opt_avalon8_freq_sel;
 extern uint32_t opt_avalon8_th_pass;
 extern uint32_t opt_avalon8_th_fail;
 extern uint32_t opt_avalon8_th_init;
-extern uint32_t opt_avalon8_th_ms;
+extern uint32_t opt_avalon8_th_mssel;
+extern uint32_t opt_avalon8_lv1_th_msadd;
+extern uint32_t opt_avalon8_lv1_th_ms;
+extern uint32_t opt_avalon8_lv2_th_msadd;
+extern uint32_t opt_avalon8_lv2_th_ms;
+extern uint32_t opt_avalon8_lv3_th_msadd;
+extern uint32_t opt_avalon8_lv3_th_ms;
+extern uint32_t opt_avalon8_lv4_th_msadd;
+extern uint32_t opt_avalon8_lv4_th_ms;
 extern uint32_t opt_avalon8_th_timeout;
-extern uint32_t opt_avalon8_th_add;
 extern uint32_t opt_avalon8_nonce_mask;
 extern uint32_t opt_avalon8_nonce_check;
 extern uint32_t opt_avalon8_mux_l2h;
 extern uint32_t opt_avalon8_mux_h2l;
-extern uint32_t opt_avalon8_h2ltime0_spd;
+extern uint32_t opt_avalon8_h2ltime_spd;
 extern uint32_t opt_avalon8_roll_enable;
 extern uint32_t opt_avalon8_spdlow;
 extern uint32_t opt_avalon8_spdhigh;

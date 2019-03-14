@@ -71,6 +71,8 @@
 
 #define AVA8_DEFAULT_DSEL		0
 
+#define AVA8_DEFAULT_CORE_CLK_SEL	0
+
 /* PID CONTROLLER*/
 #define AVA8_DEFAULT_PID_P		2
 #define AVA8_DEFAULT_PID_I		5
@@ -305,6 +307,7 @@ extern char *set_avalon8_fan(char *arg);
 extern char *set_avalon8_freq(char *arg);
 extern char *set_avalon8_voltage(char *arg);
 extern int opt_avalon8_dsel;
+extern int opt_avalon8_core_clk_sel;
 extern int opt_avalon8_temp_target;
 extern int opt_avalon8_polling_delay;
 extern int opt_avalon8_aucspeed;

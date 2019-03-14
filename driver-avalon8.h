@@ -69,6 +69,8 @@
 #define AVA8_DEFAULT_SPDLOW            1
 #define AVA8_DEFAULT_SPDHIGH           4
 
+#define AVA8_DEFAULT_DSEL		0
+
 /* PID CONTROLLER*/
 #define AVA8_DEFAULT_PID_P		2
 #define AVA8_DEFAULT_PID_I		5
@@ -302,6 +304,7 @@ struct avalon8_dev_description {
 extern char *set_avalon8_fan(char *arg);
 extern char *set_avalon8_freq(char *arg);
 extern char *set_avalon8_voltage(char *arg);
+extern int opt_avalon8_dsel;
 extern int opt_avalon8_temp_target;
 extern int opt_avalon8_polling_delay;
 extern int opt_avalon8_aucspeed;

@@ -43,6 +43,8 @@ int opt_avalon8_aucxdelay = AVA8_AUC_XDELAY;
 
 int opt_avalon8_smart_speed = AVA8_DEFAULT_SMART_SPEED;
 
+int opt_avalon8_dsel = AVA8_DEFAULT_DSEL;
+
 uint32_t opt_avalon8_th_pass = AVA8_DEFAULT_TH_PASS;
 uint32_t opt_avalon8_th_fail = AVA8_DEFAULT_TH_FAIL;
 uint32_t opt_avalon8_th_init = AVA8_DEFAULT_TH_INIT;
@@ -1336,6 +1338,11 @@ static void avalon8_init_setting(struct cgpu_info *avalon8, int addr)
 	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set spdhigh %u",
 			avalon8->drv->name, avalon8->device_id, addr,
 			opt_avalon8_spdhigh);
+
+	send_pkg.data[31] = opt_avalon8_dsel;
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set dsel %u",
+			avalon8->drv->name, avalon8->device_id, addr,
+			opt_avalon8_dsel);
 
 	/* Package the data */
 	avalon8_init_pkg(&send_pkg, AVA8_P_SET, 1, 1);

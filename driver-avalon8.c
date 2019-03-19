@@ -73,6 +73,8 @@ uint32_t opt_avalon8_pid_p = AVA8_DEFAULT_PID_P;
 uint32_t opt_avalon8_pid_i = AVA8_DEFAULT_PID_I;
 uint32_t opt_avalon8_pid_d = AVA8_DEFAULT_PID_D;
 
+uint32_t opt_avalon8_target_diff = AVA8_DRV_DIFFMAX;
+
 uint32_t cpm_table[] =
 {
 	0x04400000,
@@ -967,10 +969,12 @@ static void avalon8_stratum_pkgs(struct cgpu_info *avalon8, struct pool *pool)
 	if (avalon8_send_bc_pkgs(avalon8, &pkg))
 		return;
 
-	if (pool->sdiff <= AVA8_DRV_DIFFMAX)
+	if (pool->sdiff <= opt_avalon8_target_diff) {
 		set_target(target, pool->sdiff);
-	else
-		set_target(target, AVA8_DRV_DIFFMAX);
+		opt_avalon8_target_diff = pool->sdiff;
+	} else {
+		set_target(target, opt_avalon8_target_diff);
+	}
 
 	memcpy(pkg.data, target, 32);
 	if (opt_debug) {
@@ -1104,6 +1108,7 @@ static struct cgpu_info *avalon8_auc_detect(struct libusb_device *dev, struct us
 
 	/* We have an avalon8 AUC connected */
 	avalon8->threads = 1;
+	avalon8->drv->max_diff = opt_avalon8_target_diff;
 	add_cgpu(avalon8);
 
 	update_usb_stats(avalon8);

@@ -340,6 +340,7 @@ extern uint32_t opt_avalon8_spdhigh;
 extern uint32_t opt_avalon8_pid_p;
 extern uint32_t opt_avalon8_pid_i;
 extern uint32_t opt_avalon8_pid_d;
+extern uint32_t opt_avalon8_target_diff;
 
 #endif /* USE_AVALON8 */
 #endif /* _AVALON8_H_ */

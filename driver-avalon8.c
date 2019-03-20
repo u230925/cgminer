@@ -2459,7 +2459,7 @@ static void avalon8_statline_before(char *buf, size_t bufsiz, struct cgpu_info *
 			temp = get_temp_max(info, i);
 
 		mhsmm = avalon8_hash_cal(avalon8, i);
-		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 172));
+		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 236));
 		ghs_sum += (mhsmm / 1000);
 
 		for (j = 0; j < info->miner_count[i]; j++) {

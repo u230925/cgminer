@@ -2432,8 +2432,8 @@ static void avalon8_set_adj(struct cgpu_info *avalon8, int addr, int *adj)
 	struct avalon8_pkg send_pkg;
 	int tmp;
 
-	avalon8_set_adj_fac_up(avalon8, 0, adj[1], adj[2], adj[0]);
-	avalon8_set_adj_fac_down(avalon8, 0, adj[4], adj[5], adj[3]);
+	avalon8_set_adj_fac_up(avalon8, addr, adj[1], adj[2], adj[0]);
+	avalon8_set_adj_fac_down(avalon8, addr, adj[4], adj[5], adj[3]);
 
 	memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
 
@@ -2515,7 +2515,6 @@ static void avalon8_set_power_mode(struct cgpu_info *avalon8, int addr, int powe
 	struct avalon8_pkg send_pkg;
 	uint32_t tmp;
 	uint8_t i, cnt = 0;
-	int err;
 
 	memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
 
@@ -2529,12 +2528,8 @@ static void avalon8_set_power_mode(struct cgpu_info *avalon8, int addr, int powe
 	avalon8_init_pkg(&send_pkg, AVA8_P_SET_POWER_MODE, 1, 1);
 	if (addr == AVA8_MODULE_BROADCAST)
 		avalon8_send_bc_pkgs(avalon8, &send_pkg);
-	else {
-		do {
-			err = avalon8_iic_xfer_pkg(avalon8, addr, &send_pkg, NULL);
-			cnt++;
-		} while ((err != AVA8_SEND_OK) && (cnt <= 10));
-	}
+	else
+		avalon8_iic_xfer_pkg(avalon8, addr, &send_pkg, NULL);
 
 	return;
 }

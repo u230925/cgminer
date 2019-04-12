@@ -40,7 +40,7 @@
 #define AVA8_DEFAULT_ASIC_MAX	1
 #define AVA8_DEFAULT_PLL_CNT	4
 #define AVA8_DEFAULT_PMU_CNT	2
-#define AVA8_DEFAULT_CORE_COUNT		59
+#define AVA8_DEFAULT_CORE_COUNT		60
 
 #define AVA8_DEFAULT_POLLING_DELAY	20 /* ms */
 #define AVA8_DEFAULT_NTIME_OFFSET	0
@@ -72,6 +72,8 @@
 #define AVA8_DEFAULT_DSEL		0
 
 #define AVA8_DEFAULT_CORE_CLK_SEL	0
+
+#define AVA8_DEFAULT_CORE_RANGE_SEL	0
 
 /* PID CONTROLLER*/
 #define AVA8_DEFAULT_PID_P		2
@@ -316,6 +318,7 @@ extern int opt_avalon8_aucxdelay;
 extern int opt_avalon8_smart_speed;
 extern bool opt_avalon8_iic_detect;
 extern int opt_avalon8_freq_sel;
+extern int opt_avalon8_core_range_sel;
 extern uint32_t opt_avalon8_th_pass;
 extern uint32_t opt_avalon8_th_fail;
 extern uint32_t opt_avalon8_th_init;

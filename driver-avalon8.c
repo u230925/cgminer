@@ -47,6 +47,8 @@ int opt_avalon8_dsel = AVA8_DEFAULT_DSEL;
 
 int opt_avalon8_core_clk_sel = AVA8_DEFAULT_CORE_CLK_SEL;
 
+int opt_avalon8_core_range_sel = AVA8_DEFAULT_CORE_RANGE_SEL;
+
 uint32_t opt_avalon8_th_pass = AVA8_DEFAULT_TH_PASS;
 uint32_t opt_avalon8_th_fail = AVA8_DEFAULT_TH_FAIL;
 uint32_t opt_avalon8_th_init = AVA8_DEFAULT_TH_INIT;
@@ -1305,6 +1307,8 @@ static void avalon8_init_setting(struct cgpu_info *avalon8, int addr)
 
 	memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
 
+	send_pkg.data[0] = opt_avalon8_core_range_sel;
+
 	tmp = be32toh(opt_avalon8_freq_sel);
 	memcpy(send_pkg.data + 4, &tmp, 4);
 
@@ -1971,7 +1975,7 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 		}
 		statbuf[strlen(statbuf) - 1] = ']';
 
-		m = (AVA8_DEFAULT_CORE_COUNT == 59) ? 236 : 237;
+		m = (opt_avalon8_core_range_sel < 1) ? 236 : 237;
 		mhsmm = avalon8_hash_cal(avalon8, i);
 		mhsav = (info->diff1[i] / tdiff(&current, &(info->elapsed[i]))) * 4.294967296;
 		sprintf(buf, " WU[%.2f] Freq[%.2f] GHSmm[%.3f] GHSav[%.3f]", info->diff1[i] / tdiff(&current, &(info->elapsed[i])) * 60.0,

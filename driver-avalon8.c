@@ -255,6 +255,21 @@ struct avalon8_dev_description avalon8_dev_table_lp[] = {
 			AVA8_DEFAULT_FREQUENCY_0M,
 			AVA8_DEFAULT_FREQUENCY_500M
 		}
+	},
+	{
+		"852",
+		852,
+		4,
+		26,
+		AVA8_MM852_VIN_ADC_RATIO,
+		AVA8_MM852_VOUT_ADC_RATIO,
+		-8,
+		{
+			AVA8_DEFAULT_FREQUENCY_0M,
+			AVA8_DEFAULT_FREQUENCY_0M,
+			AVA8_DEFAULT_FREQUENCY_0M,
+			AVA8_DEFAULT_FREQUENCY_500M
+		}
 	}
 };
 
@@ -311,6 +326,21 @@ struct avalon8_dev_description avalon8_dev_table[] = {
 		26,
 		AVA8_MM851_VIN_ADC_RATIO,
 		AVA8_MM851_VOUT_ADC_RATIO,
+		5,
+		{
+			AVA8_DEFAULT_FREQUENCY_0M,
+			AVA8_DEFAULT_FREQUENCY_0M,
+			AVA8_DEFAULT_FREQUENCY_0M,
+			AVA8_DEFAULT_FREQUENCY_850M
+		}
+	},
+	{
+		"852",
+		852,
+		4,
+		26,
+		AVA8_MM852_VIN_ADC_RATIO,
+		AVA8_MM852_VOUT_ADC_RATIO,
 		5,
 		{
 			AVA8_DEFAULT_FREQUENCY_0M,
@@ -697,7 +727,8 @@ static inline uint32_t adjust_fan(struct avalon8_info *info, int id)
 	info->pid_e[id][1] = info->pid_e[id][0];
 	info->pid_e[id][0] = t - info->temp_target[id];
 
-	if (!strncmp((char *)&(info->mm_version[id]), "851", 3)) {
+	if ((!strncmp((char *)&(info->mm_version[id]), "851", 3)) ||
+		(!strncmp((char *)&(info->mm_version[id]), "852", 3))) {
 		pid_temp_min = AVA8_DEFAULT_PID_TEMP_MIN_LP;
 	} else if (opt_avalon8_power_mode_sel == AVA8_POWER_MODE_LOW)
 		pid_temp_min = AVA8_DEFAULT_PID_TEMP_MIN_LP;
@@ -962,7 +993,8 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 		break;
 	case AVA8_P_STATUS_PVT:
 		applog(LOG_DEBUG, "%s-%d-%d: AVA8_P_STATUS_PVT", avalon8->drv->name, avalon8->device_id, modular_id);
-		if (!strncmp((char *)&(info->mm_version[modular_id]), "851", 3)) {
+		if ((!strncmp((char *)&(info->mm_version[modular_id]), "851", 3)) ||
+			(!strncmp((char *)&(info->mm_version[modular_id]), "852", 3))) {
 			if (!info->asic_count[modular_id])
 				break;
 
@@ -1024,7 +1056,8 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 			for (i = 0; i < AVA8_DEFAULT_PLL_CNT; i++)
 				info->get_asic[modular_id][miner_id][asic_id][2 + i] = ar->data[8 + i];
 
-			if (!strncmp((char *)&(info->mm_version[modular_id]), "851", 3)) {
+			if ((!strncmp((char *)&(info->mm_version[modular_id]), "851", 3)) ||
+				(!strncmp((char *)&(info->mm_version[modular_id]), "852", 3))) {
 				for (i = 0; i < AVA8_DEFAULT_PLL_CNT; i++) {
 					memcpy(&freq, ar->data + 8 + AVA8_DEFAULT_PLL_CNT + i * 2, 2);
 					info->get_frequency[modular_id][miner_id][asic_id][i] = be16toh(freq);
@@ -1047,6 +1080,7 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 		applog(LOG_DEBUG, "%s-%d-%d: AVA8_P_STATUS_FAC", avalon8->drv->name, avalon8->device_id, modular_id);
 		info->factory_info[modular_id][0] = ar->data[0];
 		if ((!strncmp((char *)&(info->mm_version[modular_id]), "851", 3)) ||
+			(!strncmp((char *)&(info->mm_version[modular_id]), "852", 3)) ||
 			(opt_avalon8_power_mode_sel == AVA8_POWER_MODE_LOW))
 			memcpy(&info->factory_info[modular_id][AVA8_DEFAULT_FACTORY_INFO_CNT], ar->data + 1, info->miner_count[modular_id]);
 		info->power_mode[modular_id] = ar->data[AVA8_DEFAULT_FACTORY_INFO_0_CNT + info->miner_count[modular_id]];
@@ -1736,7 +1770,8 @@ static void detect_modules(struct cgpu_info *avalon8)
 		memcpy(info->mm_version[i], ret_pkg.data + AVA8_MM_DNA_LEN, AVA8_MM_VER_LEN);
 		info->mm_version[i][AVA8_MM_VER_LEN] = '\0';
 
-		if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+		if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+			(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 			for (dev_index = 0; dev_index < (sizeof(avalon8_dev_table_lp) / sizeof(avalon8_dev_table_lp[0])); dev_index++) {
 				if (!strncmp((char *)&(info->mm_version[i]), (char *)(avalon8_dev_table_lp[dev_index].dev_id_str), 3)) {
 					info->mod_type[i] = avalon8_dev_table_lp[dev_index].mod_type;
@@ -1795,7 +1830,8 @@ static void detect_modules(struct cgpu_info *avalon8)
 		info->temp_overheat[i] = AVA8_DEFAULT_TEMP_OVERHEAT;
 
 		if (opt_avalon8_temp_target == AVA8_INVALID_TEMP_TARGET) {
-			if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+			if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+				(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 				if (opt_avalon8_power_mode_sel == AVA8_POWER_MODE_NORMAL)
 					opt_avalon8_temp_target = avalon851_ss_high.temp;
 				else if (opt_avalon8_power_mode_sel == AVA8_POWER_MODE_BALANCE)
@@ -1820,7 +1856,8 @@ static void detect_modules(struct cgpu_info *avalon8)
 
 		for (j = 0; j < info->miner_count[i]; j++) {
 			if (opt_avalon8_voltage_level == AVA8_INVALID_VOLTAGE_LEVEL) {
-				if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+				if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+					(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 						if (opt_avalon8_power_mode_sel == AVA8_POWER_MODE_NORMAL)
 							info->set_voltage_level[i][j] = avalon851_ss_high.volt_level;
 						else if (opt_avalon8_power_mode_sel == AVA8_POWER_MODE_BALANCE)
@@ -1843,7 +1880,8 @@ static void detect_modules(struct cgpu_info *avalon8)
 				info->temp[i][j][k] = -273;
 
 			for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++) {
-				if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+				if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+					(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 					if (opt_avalon8_power_mode_sel == AVA8_POWER_MODE_NORMAL)
 						info->set_frequency[i][j][k] = avalon851_ss_high.set_freq[k];
 					else if (opt_avalon8_power_mode_sel == AVA8_POWER_MODE_BALANCE)
@@ -1877,7 +1915,8 @@ static void detect_modules(struct cgpu_info *avalon8)
 		info->hw_works[i] = 0;
 
 		/*PID controller*/
-		if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+		if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+			(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 			opt_avalon8_pid_i = AVA8_DEFAULT_PID_I_LP;
 		} else {
 			if(opt_avalon8_power_mode_sel == AVA8_POWER_MODE_LOW)
@@ -2201,7 +2240,8 @@ static void avalon8_set_freq(struct cgpu_info *avalon8, int addr, int miner_id, 
 	tmp = be32toh(tmp);
 	memcpy(send_pkg.data + AVA8_DEFAULT_PLL_CNT * 4 + 4, &tmp, 4);
 
-	if (!strncmp((char *)&(info->mm_version[addr]), "851", 3)) {
+	if ((!strncmp((char *)&(info->mm_version[addr]), "851", 3)) ||
+		(!strncmp((char *)&(info->mm_version[addr]), "852", 3))) {
 		tmp = miner_id;
 		tmp = be32toh(tmp);
 		memcpy(send_pkg.data + AVA8_DEFAULT_PLL_CNT * 4 + 8, &tmp, 4);
@@ -2656,7 +2696,8 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 					}
 				}
 
-				if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+				if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+					(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 					if (opt_avalon8_spdlow == AVA8_INVALID_SPDLOW) {
 						if(opt_avalon8_power_mode_sel == AVA8_POWER_MODE_NORMAL)
 							opt_avalon8_spdlow = avalon851_ss_high.spd_low;
@@ -2697,7 +2738,8 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 				if (adj_flag)
 					avalon8_set_adj(avalon8, i, opt_avalon8_adj);
 				else {
-					if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+					if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+						(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 						if(opt_avalon8_power_mode_sel == AVA8_POWER_MODE_NORMAL) {
 							for(m = 0; m < 10; m++)
 								opt_avalon8_adj[m] = avalon851_ss_high.adj_param.adj_param_a[m];
@@ -2734,7 +2776,8 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 				avalon8_set_freq(avalon8, i, j, 0, info->set_frequency[i][j]);
 
 			if (opt_avalon8_smart_speed) {
-				if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+				if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+					(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 					if(opt_avalon8_power_mode_sel == AVA8_POWER_MODE_NORMAL) {
 						if (opt_avalon8_th_pass == AVA8_INVALID_TH_PASS)
 							opt_avalon8_th_pass = avalon851_ss_high.th_pass;
@@ -2854,7 +2897,8 @@ static float avalon8_hash_cal(struct cgpu_info *avalon8, int modular_id)
 	float mhsmm;
 
 	mhsmm = 0;
-	if (!strncmp((char *)&(info->mm_version[modular_id]), "851", 3)) {
+	if ((!strncmp((char *)&(info->mm_version[modular_id]), "851", 3)) ||
+		(!strncmp((char *)&(info->mm_version[modular_id]), "852", 3))) {
 		for (i = 0; i < info->miner_count[modular_id]; i++) {
 			for (j = 0; j < info->asic_count[modular_id]; j++) {
 				for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++)
@@ -2950,7 +2994,8 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 		sprintf(buf, " HW[%"PRIu64"]", info->hw_works[i]);
 		strcat(statbuf, buf);
 
-		if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+		if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+			(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 			double a, b, dh;
 
 			a = 0;
@@ -3053,7 +3098,8 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 		strcat(statbuf, buf);
 
 		if (opt_debug) {
-			if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+			if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+				(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 				sprintf(buf, " FAC0[%d ", info->factory_info[i][0]);
 				strcat(statbuf, buf);
 				for (j = 0; j < info->miner_count[i]; j++) {
@@ -3095,7 +3141,8 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 			}
 			statbuf[strlen(statbuf) - 1] = ']';
 
-			if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+			if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+				(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 				for (j = 0; j < info->miner_count[i]; j++) {
 					sprintf(buf, " PVT_T%d[", j);
 					strcat(statbuf, buf);
@@ -3136,7 +3183,8 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 
 				int l;
 				/* i: modular, j: miner, k:asic, l:value */
-				if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+				if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+					(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 					for (j = 0; j < info->miner_count[i]; j++) {
 						for (l = 0; l < AVA8_DEFAULT_PLL_CNT; l++) {
 							sprintf(buf, " GF%d_%d[", j, l);
@@ -3208,7 +3256,8 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 					for (k = 0; k < info->asic_count[i]; k++) {
 						mhsmm = 0;
 						for (l = 2; l < 6; l++) {
-							if (!strncmp((char *)&(info->mm_version[i]), "851", 3))
+							if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+								(!strncmp((char *)&(info->mm_version[i]), "852", 3)))
 								mhsmm += (info->get_asic[i][j][k][l] * info->get_frequency[i][j][k][l - 2]);
 							else {
 								if (opt_avalon8_power_mode_sel == AVA8_POWER_MODE_LOW) {
@@ -3899,7 +3948,8 @@ static void avalon8_statline_before(char *buf, size_t bufsiz, struct cgpu_info *
 		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 172));
 		ghs_sum += (mhsmm / 1000);
 
-		if (!strncmp((char *)&(info->mm_version[i]), "851", 3)) {
+		if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
+			(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 			for (j = 0; j < info->miner_count[i]; j++) {
 				for (k = 0; k < info->asic_count[i]; k++) {
 					pass_num += info->get_asic[i][j][k][0];

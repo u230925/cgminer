@@ -77,59 +77,6 @@ uint32_t opt_avalon8_pid_d = AVA8_DEFAULT_PID_D;
 
 uint32_t opt_avalon8_target_diff = AVA8_DRV_DIFFMAX;
 
-uint32_t cpm_table[] =
-{
-	0x04400000,
-	0x04000000,
-	0x008ffbe1,
-	0x0097fde1,
-	0x009fffe1,
-	0x009ddf61,
-	0x009dcf61,
-	0x009f47c1,
-	0x009fbfe1,
-	0x009f37c1,
-	0x009daf61,
-	0x009b26c1,
-	0x009da761,
-	0x00999e61,
-	0x009b9ee1,
-	0x009d9f61,
-	0x009f9fe1,
-	0x00991641,
-	0x009a96a1,
-	0x009c1701,
-	0x009d9761,
-	0x009f17c1,
-	0x00958d61,
-	0x00968da1,
-	0x00978de1,
-	0x00988e21,
-	0x00998e61,
-	0x009a8ea1,
-	0x009b8ee1,
-	0x009c8f21,
-	0x009d8f61,
-	0x009e8fa1,
-	0x009f8fe1,
-	0x00900401,
-	0x00908421,
-	0x00910441,
-	0x00918461,
-	0x00920481,
-	0x009284a1,
-	0x009304c1,
-	0x009384e1,
-	0x00940501,
-	0x00948521,
-	0x00950541,
-	0x00958561,
-	0x00960581,
-	0x009685a1,
-	0x009705c1,
-	0x009785e1
-};
-
 struct avalon8_dev_description avalon8_dev_table[] = {
 	{
 		"821",
@@ -147,11 +94,6 @@ struct avalon8_dev_description avalon8_dev_table[] = {
 		}
 	}
 };
-
-static uint32_t api_get_cpm(uint32_t freq)
-{
-	return cpm_table[freq / 25];
-}
 
 static uint32_t decode_voltage(struct avalon8_info *info, int modular_id, uint32_t volt)
 {
@@ -1409,7 +1351,7 @@ static void avalon8_set_freq(struct cgpu_info *avalon8, int addr, int miner_id, 
 
 	memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
 	for (i = 0; i < AVA8_DEFAULT_PLL_CNT; i++) {
-		tmp = be32toh(api_get_cpm(freq[i]));
+		tmp = be32toh(freq[i]);
 		memcpy(send_pkg.data + i * 4, &tmp, 4);
 	}
 

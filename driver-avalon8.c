@@ -1482,6 +1482,29 @@ static void avalon8_set_ss_param(struct cgpu_info *avalon8, int addr)
 		avalon8_iic_xfer_pkg(avalon8, addr, &send_pkg, NULL);
 }
 
+static void avalon8_set_timer_spdlog(struct cgpu_info *avalon8, int addr, unsigned int value)
+{
+	struct avalon8_info *info = avalon8->device_data;
+	struct avalon8_pkg send_pkg;
+	uint32_t tmp;
+	uint8_t i;
+
+	memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
+
+	tmp = be32toh(value);
+	memcpy(send_pkg.data, &tmp, 4);
+
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set timer spdlog %d",
+	avalon8->drv->name, avalon8->device_id, addr, value);
+
+	/* Package the data */
+	avalon8_init_pkg(&send_pkg, AVA8_P_SET_TIMER_SPDLOG, 1, 1);
+	if (addr == AVA8_MODULE_BROADCAST)
+		avalon8_send_bc_pkgs(avalon8, &send_pkg);
+	else
+		avalon8_iic_xfer_pkg(avalon8, addr, &send_pkg, NULL);
+}
+
 static void avalon8_stratum_finish(struct cgpu_info *avalon8)
 {
 	struct avalon8_pkg send_pkg;
@@ -2379,6 +2402,29 @@ char *set_avalon8_device_freq(struct cgpu_info *avalon8, char *arg)
 	return NULL;
 }
 
+char *set_avalon8_device_timer_spdlog(struct cgpu_info *avalon8, char *arg)
+{
+	struct avalon8_info *info = avalon8->device_data;
+	int val;
+	unsigned int addr = 0, i, j;
+
+	if (!(*arg))
+		return NULL;
+
+	sscanf(arg, "%d", &val);
+
+	for (i = 1; i < AVA8_DEFAULT_MODULARS; i++) {
+		if (!info->enable[i])
+			continue;
+
+		avalon8_set_timer_spdlog(avalon8, i, val);
+	}
+
+	applog(LOG_NOTICE, "%s-%d: Update timer-spdlog to %d", avalon8->drv->name, avalon8->device_id, val);
+
+	return NULL;
+}
+
 static char *avalon8_set_device(struct cgpu_info *avalon8, char *option, char *setting, char *replybuf)
 {
 	unsigned int val;
@@ -2498,6 +2544,15 @@ static char *avalon8_set_device(struct cgpu_info *avalon8, char *option, char *s
 		info->reboot[val] = true;
 
 		return NULL;
+	}
+
+	if (strcasecmp(option, "timer-spdlog") == 0) {
+		if (!setting || !*setting) {
+			sprintf(replybuf, "missing timer-spdlog value");
+			return replybuf;
+		}
+
+		return set_avalon8_device_timer_spdlog(avalon8, setting);
 	}
 
 	sprintf(replybuf, "Unknown option: %s", option);

@@ -129,6 +129,7 @@
 #define AVA8_P_SET_PMU			0x24
 #define AVA8_P_SET_PLL			0x25
 #define AVA8_P_SET_SS			0x26
+#define AVA8_P_SET_TIMER_SPDLOG		0x27
 
 /* Have to send with I2C address */
 #define AVA8_P_POLLING	0x30

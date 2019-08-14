@@ -119,14 +119,11 @@ static double decode_pvt_temp(uint16_t pvt_code)
 
 static uint32_t decode_pvt_volt(uint16_t volt)
 {
-	double vref = 1.20;
-	double r = 16384.0; /* 2 ** 14 */
+	double vref = 1.8;
+	double r = 4096.0;
 	double c;
 
-	c = vref / 5.0 * (6 * (volt - 0.5) / r - 1.0);
-
-	if (c < 0)
-		c = 0;
+	c = vref / r * volt;
 
 	return c * 1000;
 }
@@ -564,13 +561,29 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 		applog(LOG_DEBUG, "%s-%d-%d: AVA8_P_STATUS_PVT", avalon8->drv->name, avalon8->device_id, modular_id);
 		if (ar->idx < info->asic_count[modular_id]) {
 			for (i = 0; i < info->miner_count[modular_id]; i++) {
-				memcpy(&tmp, ar->data + i * 4, 2);
+				memcpy(&tmp, ar->data + i * 12, 2);
 				tmp = be16toh(tmp);
 				info->temp[modular_id][i][ar->idx] = decode_pvt_temp(tmp);
 
-				memcpy(&tmp, ar->data + i * 4 + 2, 2);
+				memcpy(&tmp, ar->data + i * 12 + 2, 2);
 				tmp = be16toh(tmp);
-				info->core_volt[modular_id][i][ar->idx] = decode_pvt_volt(tmp);
+				info->core_volt[modular_id][i][ar->idx][0] = decode_pvt_volt(tmp);
+
+				memcpy(&tmp, ar->data + i * 12 + 4, 2);
+				tmp = be16toh(tmp);
+				info->core_volt[modular_id][i][ar->idx][1] = decode_pvt_volt(tmp);
+
+				memcpy(&tmp, ar->data + i * 12 + 6, 2);
+				tmp = be16toh(tmp);
+				info->core_volt[modular_id][i][ar->idx][2] = decode_pvt_volt(tmp);
+
+				memcpy(&tmp, ar->data + i * 12 + 8, 2);
+				tmp = be16toh(tmp);
+				info->core_volt[modular_id][i][ar->idx][3] = decode_pvt_volt(tmp);
+
+				memcpy(&tmp, ar->data + i * 12 + 10, 2);
+				tmp = be16toh(tmp);
+				info->core_volt[modular_id][i][ar->idx][4] = decode_pvt_volt(tmp);
 			}
 		}
 		break;
@@ -584,6 +597,24 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 			memcpy(&tmp, ar->data + i * 8 + 4, 4);
 			info->get_asic[modular_id][0][ar->idx + i][1] = be32toh(tmp);
 		}
+		break;
+	case AVA8_P_STATUS_SPD:
+		applog(LOG_DEBUG, "%s-%d-%d: AVA8_P_STATUS_SPD", avalon8->drv->name, avalon8->device_id, modular_id);
+
+		memcpy(&tmp, ar->data + 0, 4);
+		info->get_spdlog_pass_sum[modular_id][0][0] = be32toh(tmp);
+
+		memcpy(&tmp, ar->data + 4, 4);
+		info->get_spdlog_fail_sum[modular_id][0][0] = be32toh(tmp);
+
+		memcpy(&tmp, ar->data + 8, 4);
+		info->get_timer_spdsets[modular_id][0][0] = be32toh(tmp);
+
+		memcpy(&tmp, ar->data + 12, 4);
+		info->get_timer_spdpass[modular_id][0][0] = be32toh(tmp);
+
+		memcpy(&tmp, ar->data + 16, 4);
+		info->get_timer_spdfail[modular_id][0][0] = be32toh(tmp);
 		break;
 	default:
 		applog(LOG_DEBUG, "%s-%d-%d: Unknown response %x", avalon8->drv->name, avalon8->device_id, modular_id, ar->type);
@@ -1931,8 +1962,8 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 									info->current_top[i][0] / 1000.0,
 									info->current_ioa[i][0] / 1000.0,
 									info->current_iob[i][0] / 1000.0,
-									info->current_out[i][0] * info->core_volt[i][0][0] / 1000000.0,
-									info->current_out[i][0] * info->core_volt[i][0][0] / 1000000.0 / mhsav);
+									info->current_out[i][0] * info->core_volt[i][0][0][2] / 1000000.0,
+									info->current_out[i][0] * info->core_volt[i][0][0][2] / 1000000.0 / mhsav);
 		strcat(statbuf, buf);
 
 		for (j = 0; j < info->miner_count[i]; j++) {
@@ -2027,7 +2058,11 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 			sprintf(buf, " PVT_V%d[", j);
 			strcat(statbuf, buf);
 			for (k = 0; k < info->asic_count[i]; k++) {
-				sprintf(buf, "%d ", info->core_volt[i][j][k]);
+				sprintf(buf, "%d %d %d %d %d ", info->core_volt[i][j][k][0],
+								info->core_volt[i][j][k][1],
+								info->core_volt[i][j][k][2],
+								info->core_volt[i][j][k][3],
+								info->core_volt[i][j][k][4]);
 				strcat(statbuf, buf);
 			}
 
@@ -2035,53 +2070,128 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 			statbuf[strlen(statbuf)] = '\0';
 		}
 
-		{
-			int tt = 14;
+		for (j = 0; j < info->miner_count[i]; j++) {
+			sprintf(buf, " SPEED_TIME[");
+			strcat(statbuf, buf);
 
-			for (k = 0; k < 15; k++) {
+			for (k = 0; k < info->asic_count[i]; k++) {
+				sprintf(buf, "%6u ", info->get_timer_spdsets[i][j][k]);
+				strcat(statbuf, buf);
+			}
+
+			statbuf[strlen(statbuf) - 1] = ']';
+		}
+
+		for (j = 0; j < info->miner_count[i]; j++) {
+			sprintf(buf, " SPEED_PASS[");
+			strcat(statbuf, buf);
+
+			for (k = 0; k < info->asic_count[i]; k++) {
+				sprintf(buf, "%6u ", info->get_timer_spdpass[i][j][k]);
+				strcat(statbuf, buf);
+			}
+
+			statbuf[strlen(statbuf) - 1] = ']';
+		}
+
+		for (j = 0; j < info->miner_count[i]; j++) {
+			sprintf(buf, " SPEED_FAIL[");
+			strcat(statbuf, buf);
+
+			for (k = 0; k < info->asic_count[i]; k++) {
+				sprintf(buf, "%6u ", info->get_timer_spdfail[i][j][k]);
+				strcat(statbuf, buf);
+			}
+
+			statbuf[strlen(statbuf) - 1] = ']';
+		}
+
+		for (j = 0; j < info->miner_count[i]; j++) {
+			sprintf(buf, " SPEED_ERAT[");
+			strcat(statbuf, buf);
+
+			for (k = 0; k < info->asic_count[i]; k++) {
+				sprintf(buf, "%6.3f ", (double)(info->get_timer_spdpass[i][j][k] + info->get_timer_spdfail[i][j][k]) ?
+							(double)info->get_timer_spdfail[i][j][k] / (double)(info->get_timer_spdpass[i][j][k] + info->get_timer_spdfail[i][j][k]) : 0.0);
+				strcat(statbuf, buf);
+			}
+
+			statbuf[strlen(statbuf) - 1] = ']';
+		}
+
+		for (j = 0; j < info->miner_count[i]; j++) {
+			sprintf(buf, " SPEED_GHSav[");
+			strcat(statbuf, buf);
+
+			for (k = 0; k < info->asic_count[i]; k++) {
+				sprintf(buf, "%6.3f ", info->get_timer_spdsets[i][j][k] ? opt_avalon8_target_diff * 4.294967296 * info->get_timer_spdpass[i][j][k] / (1 << (32 - opt_avalon8_nonce_mask)) / (info->get_timer_spdsets[i][j][k] *0.04194304) : 0);
+				strcat(statbuf, buf);
+			}
+
+			statbuf[strlen(statbuf) - 1] = ']';
+		}
+
+		{
+			a = info->get_spdlog_pass_sum[i][0][0];
+			b = info->get_spdlog_pass_sum[i][0][0];
+			dh = b ? (b / (a + b)) * 100: 0;
+
+			sprintf(buf, " SPDLOG_SUM[");
+			strcat(statbuf, buf);
+			sprintf(buf, "%-6u %-6u %-7.3f ", info->get_spdlog_pass_sum[i][0][0], info->get_spdlog_fail_sum[i][0][0], dh);
+			strcat(statbuf, buf);
+
+			statbuf[strlen(statbuf) - 1] = ']';
+			statbuf[strlen(statbuf)] = '\0';
+		}
+
+		{
+			int tt = 17;
+
+			for (k = 0; k < 18; k++) {
 				a = info->get_asic[i][0][tt][0];
 				b = info->get_asic[i][0][tt][1];
 				dh = b ? (b / (a + b)) * 100: 0;
 
 				sprintf(buf, " SPDLOG%d_%02d[", 0, tt);
 				strcat(statbuf, buf);
-				sprintf(buf, "%-5d %-5d %-5d %-7.3f%%", info->core_work[tt], info->get_asic[i][0][tt][0], info->get_asic[i][0][tt][1], dh);
+				sprintf(buf, "%-5d %-5d %-5d %-7.3f ", info->core_work[tt], info->get_asic[i][0][tt][0], info->get_asic[i][0][tt][1], dh);
 				strcat(statbuf, buf);
 
 				statbuf[strlen(statbuf) - 1] = ']';
 				statbuf[strlen(statbuf)] = '\0';
 
-				a = info->get_asic[i][0][tt + 15][0];
-				b = info->get_asic[i][0][tt + 15][1];
+				a = info->get_asic[i][0][tt + 18][0];
+				b = info->get_asic[i][0][tt + 18][1];
 				dh = b ? (b / (a + b)) * 100: 0;
 
-				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 15);
+				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 18);
 				strcat(statbuf, buf);
-				sprintf(buf, "%-5d %-5d %-5d %-7.3f%%", info->core_work[tt + 15], info->get_asic[i][0][tt + 15][0], info->get_asic[i][0][tt + 15][1], dh);
+				sprintf(buf, "%-5d %-5d %-5d %-7.3f ", info->core_work[tt + 18], info->get_asic[i][0][tt + 18][0], info->get_asic[i][0][tt + 18][1], dh);
 				strcat(statbuf, buf);
 
 				statbuf[strlen(statbuf) - 1] = ']';
 				statbuf[strlen(statbuf)] = '\0';
 
-				a = info->get_asic[i][0][tt + 45][0];
-				b = info->get_asic[i][0][tt + 45][1];
+				a = info->get_asic[i][0][tt + 36][0];
+				b = info->get_asic[i][0][tt + 36][1];
 				dh = b ? (b / (a + b)) * 100: 0;
 
-				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 45);
+				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 36);
 				strcat(statbuf, buf);
-				sprintf(buf, "%-5d %-5d %-5d %-7.3f%%", info->core_work[tt + 45], info->get_asic[i][0][tt + 45][0], info->get_asic[i][0][tt + 45][1], dh);
+				sprintf(buf, "%-5d %-5d %-5d %-7.3f ", info->core_work[tt + 36], info->get_asic[i][0][tt + 36][0], info->get_asic[i][0][tt + 36][1], dh);
 				strcat(statbuf, buf);
 
 				statbuf[strlen(statbuf) - 1] = ']';
 				statbuf[strlen(statbuf)] = '\0';
 
-				a = info->get_asic[i][0][tt + 30][0];
-				b = info->get_asic[i][0][tt + 30][1];
+				a = info->get_asic[i][0][tt + 54][0];
+				b = info->get_asic[i][0][tt + 54][1];
 				dh = b ? (b / (a + b)) * 100: 0;
 
-				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 30);
+				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 54);
 				strcat(statbuf, buf);
-				sprintf(buf, "%-5d %-5d %-5d %-7.3f%%", info->core_work[tt + 30], info->get_asic[i][0][tt + 30][0], info->get_asic[i][0][tt + 30][1], dh);
+				sprintf(buf, "%-5d %-5d %-5d %-7.3f ", info->core_work[tt + 54], info->get_asic[i][0][tt + 54][0], info->get_asic[i][0][tt + 54][1], dh);
 				strcat(statbuf, buf);
 
 				statbuf[strlen(statbuf) - 1] = ']';

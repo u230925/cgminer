@@ -513,6 +513,9 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 
 		memcpy(&tmp, ar->data + 24, 4);
 		info->error_crc[modular_id][ar->idx] += be32toh(tmp);
+
+		memcpy(&tmp, ar->data + 28, 4);
+		info->get_nonce_count[modular_id] = be32toh(tmp);
 		break;
 	case AVA8_P_STATUS_PMU:
 		memcpy(&tmp, ar->data, 2);
@@ -1976,6 +1979,9 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 
 			statbuf[strlen(statbuf) - 1] = ']';
 		}
+
+		sprintf(buf, " NONCE_COUNT[%d]", info->get_nonce_count[i]);
+		strcat(statbuf, buf);
 
 		sprintf(buf, " TA[%d]", info->total_asics[i]);
 		strcat(statbuf, buf);

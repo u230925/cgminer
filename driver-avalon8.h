@@ -289,6 +289,8 @@ struct avalon8_info {
 	uint32_t get_timer_spdpass[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_ASIC_MAX];
 	uint32_t get_timer_spdfail[AVA8_DEFAULT_MODULARS][AVA8_DEFAULT_MINER_CNT][AVA8_DEFAULT_ASIC_MAX];
 
+	uint32_t get_nonce_count[AVA8_DEFAULT_MODULARS];
+
 	bool conn_overloaded;
 };
 

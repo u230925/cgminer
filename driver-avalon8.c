@@ -87,10 +87,10 @@ struct avalon8_dev_description avalon8_dev_table[] = {
 		AVA8_MM821_VOUT_ADC_RATIO,
 		AVA8_DEFAULT_VOLTAGE,
 		{
+			AVA8_DEFAULT_FREQUENCY_300M,
+			AVA8_DEFAULT_FREQUENCY_400M,
 			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_550M
+			AVA8_DEFAULT_FREQUENCY_0M
 		}
 	}
 };
@@ -119,11 +119,14 @@ static double decode_pvt_temp(uint16_t pvt_code)
 
 static uint32_t decode_pvt_volt(uint16_t volt)
 {
-	double vref = 1.8;
-	double r = 4096.0;
+	double vref = 1.20;
+	double r = 16384.0; /* 2 ** 14 */
 	double c;
 
-	c = vref / r * volt;
+	c = vref / 5.0 * (6 * (volt - 0.5) / r - 1.0);
+
+	if (c < 0)
+		c = 0;
 
 	return c * 1000;
 }
@@ -404,87 +407,85 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 	case AVA8_P_NONCE:
 		applog(LOG_DEBUG, "%s-%d-%d: AVA8_P_NONCE", avalon8->drv->name, avalon8->device_id, modular_id);
 
-		/* NOTE: only support 2 nonce2 */
-		for (i = 0; i < 2; i++) {
-			memcpy(&tmp, ar->data + i * 16, 4);
-			tmp = be32toh(tmp);
-			nonce_valid = (tmp >> 28) & 0xf;
-			if (!nonce_valid)
-				continue;
+		memcpy(&tmp, ar->data, 4);
+		tmp = be32toh(tmp);
+		nonce_valid = (tmp >> 28) & 0xf;
+		if (!nonce_valid) {
+			applog(LOG_ERR, "%s-%d-%d: invalid nonce!", avalon8->drv->name, avalon8->device_id, modular_id);
+			break;
+		}
 
-			micro_job_id = (tmp >> 24) & 0xf;
-			ntime = (tmp >> 16) & 0xff;
-			miner_id = (tmp >> 8) & 0xff;
-			asic_id = tmp & 0xff;
+		micro_job_id = (tmp >> 24) & 0xf;
+		ntime = (tmp >> 16) & 0xff;
+		miner_id = (tmp >> 8) & 0xff;
+		asic_id = tmp & 0xff;
 
-			memcpy(&tmp, ar->data + i * 16 + 4, 4);
-			nonce = be32toh(tmp);
+		memcpy(&tmp, ar->data + 4, 4);
+		nonce = be32toh(tmp);
 
-			memcpy(&tmp, ar->data + i * 16 + 8, 4);
-			nonce2 = be32toh(tmp);
+		memcpy(&tmp, ar->data + 8, 4);
+		nonce2 = be32toh(tmp);
 
-			job_id[0] = ar->data[i * 16 + 12];
-			job_id[1] = ar->data[i * 16 + 13];
-			pool_no = (ar->data[i * 16 + 14] | (ar->data[i * 16 + 15] << 8));
+		job_id[0] = ar->data[12];
+		job_id[1] = ar->data[13];
+		pool_no = (ar->data[14] | (ar->data[15] << 8));
 
-			/* Can happen during init sequence before add_cgpu */
-			if (unlikely(!thr))
-				break;
+		memcpy(&tmp, ar->data + 28, 4);
+		info->get_nonce_count[modular_id] = be32toh(tmp);
 
-			if ((miner_id >= AVA8_DEFAULT_MINER_CNT) || (asic_id >= AVA8_DEFAULT_ASIC_MAX)) {
-				applog(LOG_NOTICE, "%s-%d-%d: Wrong miner_id:%d or asic_id:%d",
-							avalon8->drv->name, avalon8->device_id, modular_id, miner_id, asic_id);
-				continue;
-			}
+		/* Can happen during init sequence before add_cgpu */
+		if (unlikely(!thr))
+			break;
 
-			if (pool_no >= total_pools || pool_no < 0) {
-				applog(LOG_DEBUG, "%s-%d-%d: Wrong pool_no %d",
-							avalon8->drv->name, avalon8->device_id, modular_id, pool_no);
-				continue;
-			}
+		if ((miner_id >= AVA8_DEFAULT_MINER_CNT) || (asic_id >= AVA8_DEFAULT_ASIC_MAX)) {
+			applog(LOG_NOTICE, "%s-%d-%d: Wrong miner_id:%d or asic_id:%d",
+						avalon8->drv->name, avalon8->device_id, modular_id, miner_id, asic_id);
+		}
 
-			if (ntime > info->max_ntime)
-				info->max_ntime = ntime;
+		if (pool_no >= total_pools || pool_no < 0) {
+			applog(LOG_DEBUG, "%s-%d-%d: Wrong pool_no %d",
+						avalon8->drv->name, avalon8->device_id, modular_id, pool_no);
+		}
 
-			applog(LOG_NOTICE, "%s-%d-%d: Found! P:%d - N2:%08x N:%08x NR:%d/%d [M:%d, A:%d, C:%d, MID:%d]",
-							avalon8->drv->name, avalon8->device_id, modular_id, pool_no, nonce2,
-							nonce, ntime, info->max_ntime, miner_id, asic_id, nonce & 0xff, micro_job_id);
+		if (ntime > info->max_ntime)
+			info->max_ntime = ntime;
 
-			real_pool = pool = pools[pool_no];
-			if (job_idcmp(job_id, pool->swork.job_id)) {
-				if (!job_idcmp(job_id, pool_stratum0->swork.job_id)) {
-					applog(LOG_DEBUG, "%s-%d-%d: Match to previous stratum0! (%s)",
-							avalon8->drv->name, avalon8->device_id, modular_id, pool_stratum0->swork.job_id);
-					pool = pool_stratum0;
-				} else if (!job_idcmp(job_id, pool_stratum1->swork.job_id)) {
-					applog(LOG_DEBUG, "%s-%d-%d: Match to previous stratum1! (%s)",
-							avalon8->drv->name, avalon8->device_id, modular_id, pool_stratum1->swork.job_id);
-					pool = pool_stratum1;
-				} else if (!job_idcmp(job_id, pool_stratum2->swork.job_id)) {
-					applog(LOG_DEBUG, "%s-%d-%d: Match to previous stratum2! (%s)",
-							avalon8->drv->name, avalon8->device_id, modular_id, pool_stratum2->swork.job_id);
-					pool = pool_stratum2;
-				} else {
-					applog(LOG_ERR, "%s-%d-%d: Cannot match to any stratum! (%s)",
-							avalon8->drv->name, avalon8->device_id, modular_id, pool->swork.job_id);
+		applog(LOG_NOTICE, "%s-%d-%d: Found! P:%d - N2:%08x N:%08x NR:%d/%d [M:%d, A:%d, C:%d, MID:%d]",
+						avalon8->drv->name, avalon8->device_id, modular_id, pool_no, nonce2,
+						nonce, ntime, info->max_ntime, miner_id, asic_id, nonce & 0xff, micro_job_id);
 
-					if (likely(thr))
-						inc_hw_errors(thr);
-
-					info->hw_works_i[modular_id][miner_id]++;
-
-					continue;
-				}
-			}
-
-			last_diff1 = avalon8->diff1;
-			if (!submit_nonce2_nonce(thr, pool, real_pool, nonce2, nonce, ntime, micro_job_id)) {
-				info->hw_works_i[modular_id][miner_id]++;
+		real_pool = pool = pools[pool_no];
+		if (job_idcmp(job_id, pool->swork.job_id)) {
+			if (!job_idcmp(job_id, pool_stratum0->swork.job_id)) {
+				applog(LOG_DEBUG, "%s-%d-%d: Match to previous stratum0! (%s)",
+						avalon8->drv->name, avalon8->device_id, modular_id, pool_stratum0->swork.job_id);
+				pool = pool_stratum0;
+			} else if (!job_idcmp(job_id, pool_stratum1->swork.job_id)) {
+				applog(LOG_DEBUG, "%s-%d-%d: Match to previous stratum1! (%s)",
+						avalon8->drv->name, avalon8->device_id, modular_id, pool_stratum1->swork.job_id);
+				pool = pool_stratum1;
+			} else if (!job_idcmp(job_id, pool_stratum2->swork.job_id)) {
+				applog(LOG_DEBUG, "%s-%d-%d: Match to previous stratum2! (%s)",
+						avalon8->drv->name, avalon8->device_id, modular_id, pool_stratum2->swork.job_id);
+				pool = pool_stratum2;
 			} else {
-				info->diff1[modular_id] += (avalon8->diff1 - last_diff1);
-				info->chip_matching_work[modular_id][miner_id][asic_id]++;
-				info->core_work[nonce & 0xff]++;
+				applog(LOG_ERR, "%s-%d-%d: Cannot match to any stratum! (%s)",
+						avalon8->drv->name, avalon8->device_id, modular_id, pool->swork.job_id);
+
+				if (likely(thr))
+					inc_hw_errors(thr);
+
+				info->hw_works[modular_id][miner_id][asic_id]++;
 			}
+		}
+
+		last_diff1 = avalon8->diff1;
+		if (!submit_nonce2_nonce(thr, pool, real_pool, nonce2, nonce, ntime, micro_job_id)) {
+			info->hw_works[modular_id][miner_id][asic_id]++;
+		} else {
+			info->diff1[modular_id] += (avalon8->diff1 - last_diff1);
+			info->chip_matching_work[modular_id][miner_id][asic_id]++;
+			info->core_work[nonce & 0xff]++;
 		}
 		break;
 	case AVA8_P_STATUS:
@@ -502,9 +503,6 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 		memcpy(&tmp, ar->data + 8, 4);
 		info->local_works_i[modular_id][ar->idx] += be32toh(tmp);
 
-		memcpy(&tmp, ar->data + 12, 4);
-		info->hw_works_i[modular_id][ar->idx] += be32toh(tmp);
-
 		memcpy(&tmp, ar->data + 16, 4);
 		info->error_code[modular_id][ar->idx] = be32toh(tmp);
 
@@ -513,9 +511,6 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 
 		memcpy(&tmp, ar->data + 24, 4);
 		info->error_crc[modular_id][ar->idx] += be32toh(tmp);
-
-		memcpy(&tmp, ar->data + 28, 4);
-		info->get_nonce_count[modular_id] = be32toh(tmp);
 		break;
 	case AVA8_P_STATUS_PMU:
 		memcpy(&tmp, ar->data, 2);
@@ -563,30 +558,14 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 	case AVA8_P_STATUS_PVT:
 		applog(LOG_DEBUG, "%s-%d-%d: AVA8_P_STATUS_PVT", avalon8->drv->name, avalon8->device_id, modular_id);
 		if (ar->idx < info->asic_count[modular_id]) {
-			for (i = 0; i < info->miner_count[modular_id]; i++) {
-				memcpy(&tmp, ar->data + i * 12, 2);
-				tmp = be16toh(tmp);
-				info->temp[modular_id][i][ar->idx] = decode_pvt_temp(tmp);
+			memcpy(&tmp, ar->data + 0, 2);
+			tmp = be16toh(tmp);
+			info->temp[modular_id][0][ar->idx] = decode_pvt_temp(tmp);
 
-				memcpy(&tmp, ar->data + i * 12 + 2, 2);
+			for (i = 0; i < AVA8_DEFAULT_VOLT_CNT; i++) {
+				memcpy(&tmp, ar->data + 2 + 2 * i, 2);
 				tmp = be16toh(tmp);
-				info->core_volt[modular_id][i][ar->idx][0] = decode_pvt_volt(tmp);
-
-				memcpy(&tmp, ar->data + i * 12 + 4, 2);
-				tmp = be16toh(tmp);
-				info->core_volt[modular_id][i][ar->idx][1] = decode_pvt_volt(tmp);
-
-				memcpy(&tmp, ar->data + i * 12 + 6, 2);
-				tmp = be16toh(tmp);
-				info->core_volt[modular_id][i][ar->idx][2] = decode_pvt_volt(tmp);
-
-				memcpy(&tmp, ar->data + i * 12 + 8, 2);
-				tmp = be16toh(tmp);
-				info->core_volt[modular_id][i][ar->idx][3] = decode_pvt_volt(tmp);
-
-				memcpy(&tmp, ar->data + i * 12 + 10, 2);
-				tmp = be16toh(tmp);
-				info->core_volt[modular_id][i][ar->idx][4] = decode_pvt_volt(tmp);
+				info->core_volt[modular_id][0][ar->idx][i] = decode_pvt_volt(tmp);
 			}
 		}
 		break;
@@ -1683,7 +1662,6 @@ static void detect_modules(struct cgpu_info *avalon8)
 		info->fan_cpm[i] = 0;
 		info->temp_mm[i] = -273;
 		info->local_works[i] = 0;
-		info->hw_works[i] = 0;
 
 		/*PID controller*/
 		info->pid_u[i] = opt_avalon8_fan_min;
@@ -1698,8 +1676,8 @@ static void detect_modules(struct cgpu_info *avalon8)
 		for (j = 0; j < info->miner_count[i]; j++) {
 			memset(info->chip_matching_work[i][j], 0, sizeof(uint64_t) * info->asic_count[i]);
 			memset(info->core_work, 0, sizeof(info->core_work));
+			memset(info->hw_works[i][j], 0, sizeof(uint64_t) * info->asic_count[i]);
 			info->local_works_i[i][j] = 0;
-			info->hw_works_i[i][j] = 0;
 			info->error_code[i][j] = 0;
 			info->error_crc[i][j] = 0;
 		}
@@ -1864,7 +1842,7 @@ static float avalon8_hash_cal(struct cgpu_info *avalon8, int modular_id)
 	mhsmm = 0;
 	for (i = 0; i < info->miner_count[modular_id]; i++) {
 		for (j = 0; j < AVA8_DEFAULT_PLL_CNT; j++)
-			mhsmm += (info->get_pll[modular_id][i][j] * info->get_frequency[modular_id][i][j] * 4);
+			mhsmm += (info->get_pll[modular_id][i][j] * info->get_frequency[modular_id][i][j] * 1);
 	}
 
 	return mhsmm;
@@ -1922,18 +1900,6 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 		sprintf(buf, " LW[%"PRIu64"]", info->local_works[i]);
 		strcat(statbuf, buf);
 
-		strcat(statbuf, " MH[");
-		info->hw_works[i]  = 0;
-		for (j = 0; j < info->miner_count[i]; j++) {
-			info->hw_works[i] += info->hw_works_i[i][j];
-			sprintf(buf, "%"PRIu64" ", info->hw_works_i[i][j]);
-			strcat(statbuf, buf);
-		}
-		statbuf[strlen(statbuf) - 1] = ']';
-
-		sprintf(buf, " HW[%"PRIu64"]", info->hw_works[i]);
-		strcat(statbuf, buf);
-
 		a = 0;
 		b = 0;
 		for (j = 0; j < info->miner_count[i]; j++) {
@@ -1974,7 +1940,7 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 		}
 		statbuf[strlen(statbuf) - 1] = ']';
 
-		m = (opt_avalon8_core_range_sel < 1) ? 236 : 237;
+		m = 48;
 		mhsmm = avalon8_hash_cal(avalon8, i);
 		mhsav = (info->diff1[i] / tdiff(&current, &(info->elapsed[i]))) * 4.294967296;
 		sprintf(buf, " WU[%.2f] Freq[%.2f] GHSmm[%.3f] GHSav[%.3f]", info->diff1[i] / tdiff(&current, &(info->elapsed[i])) * 60.0,
@@ -1997,6 +1963,17 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 			strcat(statbuf, buf);
 			for (k = 0; k < info->asic_count[i]; k++) {
 				sprintf(buf, "%"PRIu64" ", info->chip_matching_work[i][j][k]);
+				strcat(statbuf, buf);
+			}
+
+			statbuf[strlen(statbuf) - 1] = ']';
+		}
+
+		for (j = 0; j < info->miner_count[i]; j++) {
+			sprintf(buf, " MH%d[", j);
+			strcat(statbuf, buf);
+			for (k = 0; k < info->asic_count[i]; k++) {
+				sprintf(buf, "%"PRIu64" ", info->hw_works[i][j][k]);
 				strcat(statbuf, buf);
 			}
 
@@ -2087,11 +2064,15 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 			sprintf(buf, " PVT_V%d[", j);
 			strcat(statbuf, buf);
 			for (k = 0; k < info->asic_count[i]; k++) {
-				sprintf(buf, "%d %d %d %d %d ", info->core_volt[i][j][k][0],
+				sprintf(buf, "%d %d %d %d %d %d %d %d ",
+								info->core_volt[i][j][k][0],
 								info->core_volt[i][j][k][1],
 								info->core_volt[i][j][k][2],
 								info->core_volt[i][j][k][3],
-								info->core_volt[i][j][k][4]);
+								info->core_volt[i][j][k][4],
+								info->core_volt[i][j][k][5],
+								info->core_volt[i][j][k][6],
+								info->core_volt[i][j][k][7]);
 				strcat(statbuf, buf);
 			}
 
@@ -2175,58 +2156,18 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 		}
 
 		{
-			int tt = 17;
-
-			for (k = 0; k < 18; k++) {
-				a = info->get_asic[i][0][tt][0];
-				b = info->get_asic[i][0][tt][1];
+			for (k = 0; k < AVA8_DEFAULT_CORE_COUNT; k++) {
+				a = info->get_asic[i][0][k][0];
+				b = info->get_asic[i][0][k][1];
 				dh = b ? (b / (a + b)) * 100: 0;
 
-				sprintf(buf, " SPDLOG%d_%02d[", 0, tt);
+				sprintf(buf, " SPDLOG%d_%02d[", 0, k);
 				strcat(statbuf, buf);
-				sprintf(buf, "%-5d %-5d %-5d %-7.3f ", info->core_work[tt], info->get_asic[i][0][tt][0], info->get_asic[i][0][tt][1], dh);
+				sprintf(buf, "%-5d %-5d %-7.3f ", info->get_asic[i][0][k][0], info->get_asic[i][0][k][1], dh);
 				strcat(statbuf, buf);
 
 				statbuf[strlen(statbuf) - 1] = ']';
 				statbuf[strlen(statbuf)] = '\0';
-
-				a = info->get_asic[i][0][tt + 18][0];
-				b = info->get_asic[i][0][tt + 18][1];
-				dh = b ? (b / (a + b)) * 100: 0;
-
-				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 18);
-				strcat(statbuf, buf);
-				sprintf(buf, "%-5d %-5d %-5d %-7.3f ", info->core_work[tt + 18], info->get_asic[i][0][tt + 18][0], info->get_asic[i][0][tt + 18][1], dh);
-				strcat(statbuf, buf);
-
-				statbuf[strlen(statbuf) - 1] = ']';
-				statbuf[strlen(statbuf)] = '\0';
-
-				a = info->get_asic[i][0][tt + 36][0];
-				b = info->get_asic[i][0][tt + 36][1];
-				dh = b ? (b / (a + b)) * 100: 0;
-
-				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 36);
-				strcat(statbuf, buf);
-				sprintf(buf, "%-5d %-5d %-5d %-7.3f ", info->core_work[tt + 36], info->get_asic[i][0][tt + 36][0], info->get_asic[i][0][tt + 36][1], dh);
-				strcat(statbuf, buf);
-
-				statbuf[strlen(statbuf) - 1] = ']';
-				statbuf[strlen(statbuf)] = '\0';
-
-				a = info->get_asic[i][0][tt + 54][0];
-				b = info->get_asic[i][0][tt + 54][1];
-				dh = b ? (b / (a + b)) * 100: 0;
-
-				sprintf(buf, " SPDLOG%d_%02d[", 0, tt + 54);
-				strcat(statbuf, buf);
-				sprintf(buf, "%-5d %-5d %-5d %-7.3f ", info->core_work[tt + 54], info->get_asic[i][0][tt + 54][0], info->get_asic[i][0][tt + 54][1], dh);
-				strcat(statbuf, buf);
-
-				statbuf[strlen(statbuf) - 1] = ']';
-				statbuf[strlen(statbuf)] = '\0';
-
-				tt--;
 			}
 		}
 
@@ -2581,7 +2522,7 @@ static void avalon8_statline_before(char *buf, size_t bufsiz, struct cgpu_info *
 			temp = get_temp_max(info, i);
 
 		mhsmm = avalon8_hash_cal(avalon8, i);
-		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 236));
+		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 48));
 		ghs_sum += (mhsmm / 1000);
 
 		for (j = 0; j < info->miner_count[i]; j++) {

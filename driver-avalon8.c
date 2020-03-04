@@ -47,7 +47,7 @@ int opt_avalon8_dsel = AVA8_DEFAULT_DSEL;
 
 int opt_avalon8_core_clk_sel = AVA8_DEFAULT_CORE_CLK_SEL;
 
-int opt_avalon8_core_range_sel = AVA8_DEFAULT_CORE_RANGE_SEL;
+int opt_avalon8_core_type_sel = AVA8_DEFAULT_CORE_TYPE_SEL;
 
 uint32_t opt_avalon8_th_pass = AVA8_DEFAULT_TH_PASS;
 uint32_t opt_avalon8_th_fail = AVA8_DEFAULT_TH_FAIL;
@@ -1262,7 +1262,7 @@ static void avalon8_init_setting(struct cgpu_info *avalon8, int addr)
 
 	memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
 
-	send_pkg.data[0] = opt_avalon8_core_range_sel;
+	send_pkg.data[0] = opt_avalon8_core_type_sel;
 
 	tmp = be32toh(opt_avalon8_freq_sel);
 	memcpy(send_pkg.data + 4, &tmp, 4);
@@ -1940,7 +1940,11 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 		}
 		statbuf[strlen(statbuf) - 1] = ']';
 
-		m = 48;
+		m = 0;
+		for (j = 0; j < info->miner_count[i]; j++) {
+			for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++)
+				m += info->get_pll[i][j][k];
+		}
 		mhsmm = avalon8_hash_cal(avalon8, i);
 		mhsav = (info->diff1[i] / tdiff(&current, &(info->elapsed[i]))) * 4.294967296;
 		sprintf(buf, " WU[%.2f] Freq[%.2f] GHSmm[%.3f] GHSav[%.3f]", info->diff1[i] / tdiff(&current, &(info->elapsed[i])) * 60.0,
@@ -2505,7 +2509,7 @@ static void avalon8_statline_before(char *buf, size_t bufsiz, struct cgpu_info *
 	struct avalon8_info *info = avalon8->device_data;
 	int temp = -273;
 	int fanmin = AVA8_DEFAULT_FAN_MAX;
-	int i, j, k;
+	int i, j, k, m;
 	uint32_t frequency = 0;
 	float ghs_sum = 0, mhsmm = 0;
 	double pass_num = 0.0, fail_num = 0.0;
@@ -2522,7 +2526,14 @@ static void avalon8_statline_before(char *buf, size_t bufsiz, struct cgpu_info *
 			temp = get_temp_max(info, i);
 
 		mhsmm = avalon8_hash_cal(avalon8, i);
-		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 48));
+
+		m = 0;
+		for (j = 0; j < info->miner_count[i]; j++) {
+			for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++)
+				m += info->get_pll[i][j][k];
+		}
+
+		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * m));
 		ghs_sum += (mhsmm / 1000);
 
 		for (j = 0; j < info->miner_count[i]; j++) {

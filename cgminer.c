@@ -1670,9 +1670,9 @@ static struct opt_table opt_config_table[] = {
 	OPT_WITH_ARG("--avalon8-target-diff",
 		     set_int_1_to_65535, opt_show_intval, &opt_avalon8_target_diff,
 		     "Set Avalon8 target difficulty, range 1-65535"),
-	OPT_WITH_ARG("--avalon8-core-range-sel",
-		     set_int_0_to_2, opt_show_intval, &opt_avalon8_core_range_sel,
-		     "Set Avalon8 default core range select, range 0-2"),
+	OPT_WITH_ARG("--avalon8-core-type-sel",
+		     set_int_0_to_255, opt_show_intval, &opt_avalon8_core_type_sel,
+		     "Set Avalon8 default core range select, range 0-255"),
 #endif
 #ifdef USE_AVALON_MINER
 	OPT_WITH_CBARG("--avalonm-voltage",

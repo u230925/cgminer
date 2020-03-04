@@ -74,7 +74,7 @@
 
 #define AVA8_DEFAULT_CORE_CLK_SEL	1
 
-#define AVA8_DEFAULT_CORE_RANGE_SEL	0
+#define AVA8_DEFAULT_CORE_TYPE_SEL	0
 
 #define AVA8_DEFAULT_VOLT_CNT		8
 
@@ -332,7 +332,7 @@ extern int opt_avalon8_aucxdelay;
 extern int opt_avalon8_smart_speed;
 extern bool opt_avalon8_iic_detect;
 extern int opt_avalon8_freq_sel;
-extern int opt_avalon8_core_range_sel;
+extern int opt_avalon8_core_type_sel;
 extern uint32_t opt_avalon8_th_pass;
 extern uint32_t opt_avalon8_th_fail;
 extern uint32_t opt_avalon8_th_init;

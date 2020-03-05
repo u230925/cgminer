@@ -3055,6 +3055,23 @@ static struct api_data *avalon8_api_stats(struct cgpu_info *avalon8)
 		sprintf(buf, " HW[%"PRIu64"]", info->hw_works[i]);
 		strcat(statbuf, buf);
 
+		if (!strncmp((char *)&(info->mm_version[i]), "821", 3))	{
+			double a, b, dh;
+
+			a = 0;
+			b = 0;
+			for (j = 0; j < info->miner_count[i]; j++) {
+				for (k = 0; k < info->asic_count[i]; k++) {
+					a += info->get_asic[i][j][k][0];
+					b += info->get_asic[i][j][k][1];
+				}
+			}
+			dh = b ? (b / (a + b)) * 100 : 0;
+			sprintf(buf, " DH[%.3f%%]", dh);
+			strcat(statbuf, buf);
+		}
+
+
 		if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
 			(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 			double dh;
@@ -4001,6 +4018,15 @@ static void avalon8_statline_before(char *buf, size_t bufsiz, struct cgpu_info *
 		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 172));
 		ghs_sum += (mhsmm / 1000);
 
+		if (!strncmp((char *)&(info->mm_version[i]), "821", 3)) {
+			for (j = 0; j < info->miner_count[i]; j++) {
+				for (k = 0; k < info->asic_count[i]; k++) {
+					pass_num += info->get_asic[i][j][k][0];
+					fail_num += info->get_asic[i][j][k][1];
+				}
+			}
+			flag = 1;
+		}
 		if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||
 			(!strncmp((char *)&(info->mm_version[i]), "852", 3))) {
 			for (j = 0; j < info->miner_count[i]; j++) {

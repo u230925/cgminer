@@ -268,7 +268,7 @@ struct avalon8_dev_description avalon8_dev_table_lp[] = {
 			AVA8_DEFAULT_FREQUENCY_0M,
 			AVA8_DEFAULT_FREQUENCY_0M,
 			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_50M
+			AVA8_DEFAULT_FREQUENCY_500M
 		}
 	}
 };
@@ -286,7 +286,7 @@ struct avalon8_dev_description avalon8_dev_table[] = {
 			AVA8_DEFAULT_FREQUENCY_0M,
 			AVA8_DEFAULT_FREQUENCY_0M,
 			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_100M
+			AVA8_DEFAULT_FREQUENCY_25M
 		}
 	},
 	{

@@ -279,7 +279,8 @@ static char *opt_set_avalon8_voltage_level;
 static char *opt_set_avalon8_voltage_level_offset;
 static char *opt_set_avalon8_freq;
 static char *opt_set_avalon8_asic_otp;
-static char *opt_set_avalon8_adj;
+static char *opt_set_avalon8_adjust_volt_info;
+static char *opt_set_avalon8_adjust_freq_info;
 #endif
 #ifdef USE_AVALON_MINER
 static char *opt_set_avalonm_voltage;
@@ -1510,10 +1511,10 @@ static struct opt_table opt_config_table[] = {
 		     opt_set_bool, &opt_avalon7_ssplus_enable,
 		     "Enable avalon7 smart speed plus."),
 #endif
-#ifdef USE_AVALON8
+#ifdef USE_AVALON9
 	OPT_WITH_CBARG("--avalon8-voltage-level",
 		     set_avalon8_voltage_level, NULL, &opt_set_avalon8_voltage_level,
-		     "Set Avalon8 default level of core voltage, range:[0, 15], step: 1"),
+		     "Set Avalon8 default level of core voltage, range:[0, 35], step: 1"),
 	OPT_WITH_CBARG("--avalon8-voltage-level-offset",
 		     set_avalon8_voltage_level_offset, NULL, &opt_set_avalon8_voltage_level_offset,
 		     "Set Avalon8 default offset of core voltage level, range:[-2, 1], step: 1"),
@@ -1521,8 +1522,8 @@ static struct opt_table opt_config_table[] = {
 		     set_avalon8_freq, NULL, &opt_set_avalon8_freq,
 		     "Set Avalon8 default frequency, range:[25, 1200], step: 25, example: 800"),
 	OPT_WITH_ARG("--avalon8-freq-sel",
-		     set_int_0_to_3, opt_show_intval, &opt_avalon8_freq_sel,
-		     "Set Avalon8 default frequency select, range:[0, 3], step: 1, example: 3"),
+		     set_int_0_to_4, opt_show_intval, &opt_avalon8_freq_sel,
+		     "Set Avalon8 default frequency select, range:[0, 4], step: 1, example: 3"),
 	OPT_WITH_CBARG("--avalon8-fan",
 		     set_avalon8_fan, NULL, &opt_set_avalon8_fan,
 		     "Set Avalon8 target fan speed, range:[0, 100], step: 1, example: 0-100"),
@@ -1586,6 +1587,9 @@ static struct opt_table opt_config_table[] = {
 	OPT_WITH_ARG("--avalon8-spdhigh",
 		     set_int_0_to_3, opt_show_intval, &opt_avalon8_spdhigh,
 		     "Set Avalon8 spdhigh, range 0-3."),
+	OPT_WITH_ARG("--avalon8-tbase",
+		     set_int_0_to_255, opt_show_intval, &opt_avalon8_tbase,
+		     "Set Avalon8 tbase and use (0-8) bits, range 0-255."),
 	OPT_WITH_CBARG("--avalon8-cinfo-asic",
 		     set_avalon8_asic_otp, NULL, &opt_set_avalon8_asic_otp,
 		     "Set Avalon8 cinfo asic index, range:[0, 25], step: 1"),
@@ -1598,12 +1602,15 @@ static struct opt_table opt_config_table[] = {
 	OPT_WITH_ARG("--avalon8-pid-d",
 		     set_int_0_to_9999, opt_show_intval, &opt_avalon8_pid_d,
 		     "Set Avalon8 pid-d, range 0-9999."),
-	OPT_WITH_CBARG("--avalon8-adj",
-		     set_avalon8_adj, NULL, &opt_set_avalon8_adj,
-		     "Set Avalon8 adjust control params"),
-	OPT_WITH_ARG("--avalon8-power-mode",
-		     set_int_0_to_5, opt_show_intval, &opt_avalon8_power_mode_sel,
-		     "Set Avalon8 power mode, range 0-5. 0: HighPerformance, 1: Balanced, 2: Low:."),
+	OPT_WITH_ARG("--avalon8-adjust-volt-freq",
+		     set_int_0_to_1, opt_show_intval, &opt_avalon8_adjust_volt_freq,
+		     "Set Avalon8 adjust voltage and frequency, range 0-1, 0: disable, 1: enable"),
+	OPT_WITH_CBARG("--avalon8-adjust-volt-info",
+		     set_avalon8_adjust_volt_info, NULL, &opt_set_avalon8_adjust_volt_info,
+		     "Set Avalon8 adjust volt info, eg. up_init/factor/threshold, down_init/factor/threshold, adjust_time"),
+	OPT_WITH_CBARG("--avalon8-adjust-freq-info",
+		     set_avalon8_adjust_freq_info, NULL, &opt_set_avalon8_adjust_freq_info,
+		     "Set Avalon8 adjust freq info, eg. up_init/factor/threshold, down_init/factor/threshold, adjust_time"),
 #endif
 #ifdef USE_AVALON_MINER
 	OPT_WITH_CBARG("--avalonm-voltage",

@@ -29,12 +29,24 @@ int opt_avalon8_voltage_level_offset = AVA8_DEFAULT_VOLTAGE_LEVEL_OFFSET;
 int opt_avalon8_asic_otp = AVA8_INVALID_ASIC_OTP;
 static uint8_t opt_avalon8_cycle_hit_flag;
 
+/* Use to distinguish fac value for A911 and A910 */
+static uint8_t opt_avalon821_fac_bin4_flag = 0;
+
 int opt_avalon8_freq[AVA8_DEFAULT_PLL_CNT] =
 {
 	AVA8_DEFAULT_FREQUENCY,
 	AVA8_DEFAULT_FREQUENCY,
 	AVA8_DEFAULT_FREQUENCY,
 	AVA8_DEFAULT_FREQUENCY
+};
+
+/* Default frequency for Fixed power */
+int opt_avalon821_freq[AVA8_DEFAULT_PLL_CNT] =
+{
+	AVA8_DEFAULT_FREQUENCY_0M,
+	AVA8_DEFAULT_FREQUENCY_0M,
+	AVA8_DEFAULT_FREQUENCY_0M,
+	AVA8_DEFAULT_FREQUENCY_250M
 };
 
 int opt_avalon8_freq_sel = AVA8_DEFAULT_FREQUENCY_SEL;
@@ -71,6 +83,34 @@ uint32_t opt_avalon8_tbase = AVA8_DEFAULT_TBASE;
 uint32_t opt_avalon8_pid_p = AVA8_DEFAULT_PID_P;
 uint32_t opt_avalon8_pid_i = AVA8_DEFAULT_PID_I;
 uint32_t opt_avalon8_pid_d = AVA8_DEFAULT_PID_D;
+
+uint32_t opt_avalon8_adjust_volt_freq = AVA8_DEFAULT_ADJUST_VOLT_FREQ;
+
+int32_t opt_avalon8_adjust_volt_up_init = AVA8_DEFAULT_ADJUST_VOLT_UP_INIT;
+uint32_t opt_avalon8_adjust_volt_up_factor = AVA8_DEFAULT_ADJUST_VOLT_UP_FACTOR;
+uint32_t opt_avalon8_adjust_volt_up_threshold = AVA8_DEFAULT_ADJUST_VOLT_UP_THRESHOLD;
+int32_t opt_avalon8_adjust_volt_down_init = AVA8_DEFAULT_ADJUST_VOLT_DOWN_INIT;
+uint32_t opt_avalon8_adjust_volt_down_factor = AVA8_DEFAULT_ADJUST_VOLT_DOWN_FACTOR;
+uint32_t opt_avalon8_adjust_volt_down_threshold = AVA8_DEFAULT_ADJUST_VOLT_DOWN_THRESHOLD;
+uint32_t opt_avalon8_adjust_volt_time = AVA8_DEFAULT_ADJUST_VOLT_TIME;
+
+/* A911 adjust frequence parameters */
+int32_t opt_avalon8_adjust_freq_up_init = AVA8_DEFAULT_ADJUST_FREQ_UP_INIT;
+uint32_t opt_avalon8_adjust_freq_up_factor = AVA8_DEFAULT_ADJUST_FREQ_UP_FACTOR;
+uint32_t opt_avalon8_adjust_freq_up_threshold = AVA8_DEFAULT_ADJUST_FREQ_UP_THRESHOLD;
+int32_t opt_avalon8_adjust_freq_down_init = AVA8_DEFAULT_ADJUST_FREQ_DOWN_INIT;
+uint32_t opt_avalon8_adjust_freq_down_factor = AVA8_DEFAULT_ADJUST_FREQ_DOWN_FACTOR;
+uint32_t opt_avalon8_adjust_freq_down_threshold = AVA8_DEFAULT_ADJUST_FREQ_DOWN_THRESHOLD;
+uint32_t opt_avalon8_adjust_freq_time = AVA8_DEFAULT_ADJUST_FREQ_TIME;
+
+/* A910 adjust frequence parameters */
+int32_t opt_avalon821_adjust_freq_up_init = AVA810_DEFAULT_ADJUST_FREQ_UP_INIT;
+uint32_t opt_avalon821_adjust_freq_up_factor = AVA810_DEFAULT_ADJUST_FREQ_UP_FACTOR;
+uint32_t opt_avalon821_adjust_freq_up_threshold = AVA810_DEFAULT_ADJUST_FREQ_UP_THRESHOLD;
+int32_t opt_avalon821_adjust_freq_down_init = AVA810_DEFAULT_ADJUST_FREQ_DOWN_INIT;
+uint32_t opt_avalon821_adjust_freq_down_factor = AVA810_DEFAULT_ADJUST_FREQ_DOWN_FACTOR;
+uint32_t opt_avalon821_adjust_freq_down_threshold = AVA810_DEFAULT_ADJUST_FREQ_DOWN_THRESHOLD;
+uint32_t opt_avalon821_adjust_freq_time = AVA810_DEFAULT_ADJUST_FREQ_TIME;
 
 uint32_t cpm_table[] =
 {
@@ -180,16 +220,42 @@ uint32_t cpm_table_point[] =
 
 struct avalon8_dev_description avalon8_dev_table[] = {
 	{
-		"821",
-		821,
+		"911",
+		911,
 		6,
 		34,
 		26,
 		{
 			AVA8_DEFAULT_FREQUENCY_0M,
+			AVA8_DEFAULT_FREQUENCY_462M,
+			AVA8_DEFAULT_FREQUENCY_512M,
+			AVA8_DEFAULT_FREQUENCY_562M
+		}
+	},
+	{
+		"910",
+		910,
+		6,
+		34,
+		26,
+		{
 			AVA8_DEFAULT_FREQUENCY_0M,
+			AVA8_DEFAULT_FREQUENCY_475M,
+			AVA8_DEFAULT_FREQUENCY_525M,
+			AVA8_DEFAULT_FREQUENCY_575M
+		}
+	},
+	{
+		"910S",
+		910,
+		6,
+		34,
+		26,
+		{
 			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_250M
+			AVA8_DEFAULT_FREQUENCY_462M,
+			AVA8_DEFAULT_FREQUENCY_512M,
+			AVA8_DEFAULT_FREQUENCY_562M
 		}
 	}
 };
@@ -835,6 +901,15 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 	case AVA8_P_STATUS_FAC:
 		applog(LOG_DEBUG, "%s-%d-%d: AVA8_P_STATUS_FAC", avalon8->drv->name, avalon8->device_id, modular_id);
 		info->factory_info[modular_id][0] = ar->data[0];
+
+		/* A911S/A910S overpower set target temperatrue, A911S flag: 0, A910S flag: 1 */
+		if (info->factory_info[modular_id][0]) {
+			if (opt_avalon821_fac_bin4_flag)
+				info->temp_target[modular_id] = AVA810S_DEFAULT_TEMP_TARGET;
+			else
+				info->temp_target[modular_id] = AVA811S_DEFAULT_TEMP_TARGET;
+		}
+
 		info->factory_info[modular_id][AVA8_DEFAULT_FACTORY_INFO_CNT] = ar->data[1];
 		break;
 	case AVA8_P_STATUS_OC:
@@ -1523,6 +1598,14 @@ static void detect_modules(struct cgpu_info *avalon8)
 				break;
 			}
 		}
+
+		if (!strncmp((char *)&(info->mm_version[i]), "910S", 4)) {
+			dev_index++;
+			info->mod_type[i] = avalon8_dev_table[dev_index].mod_type;
+			info->miner_count[i] = avalon8_dev_table[dev_index].miner_count;
+			info->asic_count[i] = avalon8_dev_table[dev_index].asic_count;
+		}
+
 		if (dev_index == (sizeof(avalon8_dev_table) / sizeof(avalon8_dev_table[0]))) {
 			applog(LOG_NOTICE, "%s-%d: The modular version %s cann't be support",
 				       avalon8->drv->name, avalon8->device_id, info->mm_version[i]);
@@ -1536,7 +1619,23 @@ static void detect_modules(struct cgpu_info *avalon8)
 		tmp = be32toh(tmp);
 		info->total_asics[i] = tmp;
 		info->temp_overheat[i] = AVA8_DEFAULT_TEMP_OVERHEAT;
-		info->temp_target[i] = opt_avalon8_temp_target;
+
+		/* A911 target temperatuer */
+		if (!strncmp((char *)&(info->mm_version[i]), "911", 3)) {
+			if (info->mm_version[i][3] == 'V')
+				info->temp_target[i] = AVA811V_DEFAULT_TEMP_TARGET;
+			else
+				info->temp_target[i] = opt_avalon8_temp_target;
+		} else if (!strncmp((char *)&(info->mm_version[i]), "910", 3)) {
+			if (opt_avalon8_temp_target != AVA8_DEFAULT_TEMP_TARGET)
+				info->temp_target[i] = opt_avalon8_temp_target;
+			else
+				info->temp_target[i] = AVA810_DEFAULT_TEMP_TARGET;
+
+			/* FAC vaule for 1, A910 target temperature for BIN4 */
+			opt_avalon821_fac_bin4_flag = 1;
+		}
+
 		info->fan_pct[i] = opt_avalon8_fan_min;
 		for (j = 0; j < info->miner_count[i]; j++) {
 			if (opt_avalon8_voltage_level == AVA8_INVALID_VOLTAGE_LEVEL)
@@ -1817,6 +1916,12 @@ static void avalon8_set_voltage_level(struct cgpu_info *avalon8, int addr, unsig
 			avalon8->drv->name, avalon8->device_id, addr,
 			i, voltage[0], voltage[info->miner_count[addr] - 1]);
 
+	tmp = be32toh(opt_avalon8_adjust_volt_freq);
+	memcpy(send_pkg.data + 24, &tmp, 4);
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set adjust voltage and frequency %u",
+			avalon8->drv->name, avalon8->device_id, addr,
+			opt_avalon8_adjust_volt_freq);
+
 	/* Package the data */
 	avalon8_init_pkg(&send_pkg, AVA8_P_SET_VOLT, 1, 1);
 	if (addr == AVA8_MODULE_BROADCAST)
@@ -2049,6 +2154,63 @@ static void avalon8_set_adjust_voltage_option(struct cgpu_info *avalon8, int add
 	return;
 }
 
+static void avalon8_set_adjust_freq_option(struct cgpu_info *avalon8, int addr,
+						int32_t freq_up_init, uint32_t freq_up_factor, uint32_t freq_up_threshold,
+						int32_t freq_down_init, uint32_t freq_down_factor, uint32_t freq_down_threshold,
+						uint32_t freq_time)
+{
+	struct avalon8_info *info = avalon8->device_data;
+	struct avalon8_pkg send_pkg;
+	int32_t tmp;
+
+	memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
+
+	tmp = be32toh(freq_up_init);
+	memcpy(send_pkg.data + 0, &tmp, 4);
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set freq up init %d",
+			avalon8->drv->name, avalon8->device_id, addr, freq_up_init);
+
+	tmp = be32toh(freq_up_factor);
+	memcpy(send_pkg.data + 4, &tmp, 4);
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set freq up factor %d",
+			avalon8->drv->name, avalon8->device_id, addr, freq_up_factor);
+
+	tmp = be32toh(freq_up_threshold);
+	memcpy(send_pkg.data + 8, &tmp, 4);
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set freq up threshold %d",
+			avalon8->drv->name, avalon8->device_id, addr, freq_up_threshold);
+
+	tmp = be32toh(freq_down_init);
+	memcpy(send_pkg.data + 12, &tmp, 4);
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set freq down init %d",
+			avalon8->drv->name, avalon8->device_id, addr, freq_down_init);
+
+	tmp = be32toh(freq_down_factor);
+	memcpy(send_pkg.data + 16, &tmp, 4);
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set freq down factor %d",
+			avalon8->drv->name, avalon8->device_id, addr, freq_down_factor);
+
+	tmp = be32toh(freq_down_threshold);
+	memcpy(send_pkg.data + 20, &tmp, 4);
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set freq down threshold %d",
+			avalon8->drv->name, avalon8->device_id, addr, freq_down_threshold);
+
+	tmp = be32toh(freq_time);
+	memcpy(send_pkg.data + 24, &tmp, 4);
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set freq time %d",
+			avalon8->drv->name, avalon8->device_id, addr, freq_time);
+
+	/* Package the data */
+	avalon8_init_pkg(&send_pkg, AVA8_P_SET_ADJUST_FREQ, 1, 1);
+
+	if (addr == AVA8_MODULE_BROADCAST)
+		avalon8_send_bc_pkgs(avalon8, &send_pkg);
+	else
+		avalon8_iic_xfer_pkg(avalon8, addr, &send_pkg, NULL);
+
+	return;
+}
+
 static void avalon8_stratum_finish(struct cgpu_info *avalon8)
 {
 	struct avalon8_pkg send_pkg;
@@ -2187,12 +2349,28 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 		switch (info->freq_mode[i]) {
 			case AVA8_FREQ_INIT_MODE:
 				update_settings = true;
-				for (j = 0; j < info->miner_count[i]; j++) {
-					for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++) {
-						if (opt_avalon8_freq[k] != AVA8_DEFAULT_FREQUENCY)
-							info->set_frequency[i][j][k] = opt_avalon8_freq[k];
+
+				/* A911 may modify frequency value */
+				if (!strncmp((char *)&(info->mm_version[i]), "911", 3)) {
+					for (j = 0; j < info->miner_count[i]; j++) {
+						for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++) {
+							/* Avalon911 Fixed power and don't set freq */
+							if ((info->mm_version[i][3] != 'V') && (opt_avalon8_freq[k] == AVA8_DEFAULT_FREQUENCY))
+								info->set_frequency[i][j][k] = opt_avalon821_freq[k];
+							else if (opt_avalon8_freq[k] != AVA8_DEFAULT_FREQUENCY)
+								info->set_frequency[i][j][k] = opt_avalon8_freq[k];
+						}
+					}
+				} else {
+					/* Avalon910 and avalon821S may modify frequency value*/
+					for (j = 0; j < info->miner_count[i]; j++) {
+						for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++) {
+							if (opt_avalon8_freq[k] != AVA8_DEFAULT_FREQUENCY)
+								info->set_frequency[i][j][k] = opt_avalon8_freq[k];
+						}
 					}
 				}
+
 				avalon8_init_setting(avalon8, i);
 
 				info->freq_mode[i] = AVA8_FREQ_PLLADJ_MODE;
@@ -2211,6 +2389,37 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 		if (update_settings) {
 			cg_wlock(&info->update_lock);
 			avalon8_set_voltage_level(avalon8, i, info->set_voltage_level[i]);
+
+			avalon8_set_adjust_voltage_option(avalon8, i,
+								opt_avalon8_adjust_volt_up_init,
+								opt_avalon8_adjust_volt_up_factor,
+								opt_avalon8_adjust_volt_up_threshold,
+								opt_avalon8_adjust_volt_down_init,
+								opt_avalon8_adjust_volt_down_factor,
+								opt_avalon8_adjust_volt_down_threshold,
+								opt_avalon8_adjust_volt_time);
+
+			/* A911 and A910 have different the adjusting frequrence parameters */
+			if (!strncmp((char *)&(info->mm_version[i]), "911", 3)) {
+				avalon8_set_adjust_freq_option(avalon8, i,
+									opt_avalon8_adjust_freq_up_init,
+									opt_avalon8_adjust_freq_up_factor,
+									opt_avalon8_adjust_freq_up_threshold,
+									opt_avalon8_adjust_freq_down_init,
+									opt_avalon8_adjust_freq_down_factor,
+									opt_avalon8_adjust_freq_down_threshold,
+									opt_avalon8_adjust_freq_time);
+			} else {
+				avalon8_set_adjust_freq_option(avalon8, i,
+									opt_avalon821_adjust_freq_up_init,
+									opt_avalon821_adjust_freq_up_factor,
+									opt_avalon821_adjust_freq_up_threshold,
+									opt_avalon821_adjust_freq_down_init,
+									opt_avalon821_adjust_freq_down_factor,
+									opt_avalon821_adjust_freq_down_threshold,
+									opt_avalon821_adjust_freq_time);
+			}
+
 			avalon8_set_asic_otp(avalon8, i, info->set_asic_otp[i]);
 			for (j = 0; j < info->miner_count[i]; j++)
 				avalon8_set_freq(avalon8, i, j, 0, info->set_frequency[i][j]);
@@ -2745,18 +2954,22 @@ char *set_avalon8_device_freq(struct cgpu_info *avalon8, char *arg)
 	return NULL;
 }
 
+/* A911S overpower use factory value to set chip target temperature, range: 0 - 1 */
 char *set_avalon8_factory_info(struct cgpu_info *avalon8, char *arg)
 {
 	struct avalon8_info *info = avalon8->device_data;
 	char type[AVA8_DEFAULT_FACTORY_INFO_1_CNT];
+	char type_plus[AVA8_DEFAULT_FACTORY_INFO_2_CNT] = {0};
+	char type_all[AVA8_DEFAULT_FACTORY_INFO_1_CNT + AVA8_DEFAULT_FACTORY_INFO_2_CNT + 1] = {0};
 	int val, i;
 
 	if (!(*arg))
 		return NULL;
 
-	memset(type, 0, AVA8_DEFAULT_FACTORY_INFO_1_CNT);
+	sscanf(arg, "%d-%s", &val, type_all);
 
-	sscanf(arg, "%d-%s", &val, type);
+	memcpy(type, &type_all[0], AVA8_DEFAULT_FACTORY_INFO_1_CNT);
+	memcpy(type_plus, &type_all[AVA8_DEFAULT_FACTORY_INFO_1_CNT + 1], AVA8_DEFAULT_FACTORY_INFO_2_CNT);
 
 	if ((val != AVA8_DEFAULT_FACTORY_INFO_0_IGNORE) &&
 				(val < AVA8_DEFAULT_FACTORY_INFO_0_MIN || val > AVA8_DEFAULT_FACTORY_INFO_0_MAX))
@@ -2769,6 +2982,7 @@ char *set_avalon8_factory_info(struct cgpu_info *avalon8, char *arg)
 		info->factory_info[i][0] = val;
 
 		memcpy(&info->factory_info[i][1], type, AVA8_DEFAULT_FACTORY_INFO_1_CNT);
+		memcpy(&info->factory_info[i][4], type_plus, AVA8_DEFAULT_FACTORY_INFO_2_CNT);
 
 		avalon8_set_factory_info(avalon8, i, (uint8_t *)info->factory_info[i]);
 	}
@@ -2801,6 +3015,40 @@ char *set_avalon8_overclocking_info(struct cgpu_info *avalon8, char *arg)
 	return NULL;
 }
 
+char *set_avalon8_adjust_volt_info(char *arg)
+{
+	int ret;
+
+	ret = sscanf(arg, "%d-%d-%d-%d-%d-%d-%d", &opt_avalon8_adjust_volt_up_init,
+						&opt_avalon8_adjust_volt_up_factor,
+						&opt_avalon8_adjust_volt_up_threshold,
+						&opt_avalon8_adjust_volt_down_init,
+						&opt_avalon8_adjust_volt_down_factor,
+						&opt_avalon8_adjust_volt_down_threshold,
+						&opt_avalon8_adjust_volt_time);
+	if (ret < 1)
+		return "Invalid value for adjust volt info";
+
+	return NULL;
+}
+
+char *set_avalon8_adjust_freq_info(char *arg)
+{
+	int ret;
+
+	ret = sscanf(arg, "%d-%d-%d-%d-%d-%d-%d", &opt_avalon8_adjust_freq_up_init,
+						&opt_avalon8_adjust_freq_up_factor,
+						&opt_avalon8_adjust_freq_up_threshold,
+						&opt_avalon8_adjust_freq_down_init,
+						&opt_avalon8_adjust_freq_down_factor,
+						&opt_avalon8_adjust_freq_down_threshold,
+						&opt_avalon8_adjust_freq_time);
+	if (ret < 1)
+		return "Invalid value for adjust freq info";
+
+	return NULL;
+}
+
 char *set_avalon8_adjust_voltage_info(struct cgpu_info *avalon8, char *arg)
 {
 	struct avalon8_info *info = avalon8->device_data;
@@ -2816,6 +3064,28 @@ char *set_avalon8_adjust_voltage_info(struct cgpu_info *avalon8, char *arg)
 	applog(LOG_NOTICE, "%s-%d: Update adjust voltage info: [%d, %d, %d, %d, %d, %d, %d]",
 		avalon8->drv->name, avalon8->device_id, up_init, up_factor, up_threshold,
 		down_init, down_factor, up_threshold, time);
+
+	return NULL;
+}
+
+char *set_avalon8_target_temp_info(struct cgpu_info *avalon8, char *arg)
+{
+	struct avalon8_info *info = avalon8->device_data;
+	int i, val;
+
+	if (!(*arg))
+		return NULL;
+
+	sscanf(arg, "%d", &val);
+
+	if (val < AVA8_DEFAULT_TEMP_MIN || val > AVA8_DEFAULT_TEMP_MAX)
+		return "Invalid temperature value to set_avalon8_target_temp_info";
+
+	for (i = 1; i < AVA8_DEFAULT_MODULARS; i++)
+		info->temp_target[i] = val;
+
+	applog(LOG_NOTICE, "%s-%d: Update temperature info: %d",
+		avalon8->drv->name, avalon8->device_id, val);
 
 	return NULL;
 }
@@ -2968,6 +3238,15 @@ static char *avalon8_set_device(struct cgpu_info *avalon8, char *option, char *s
 		return set_avalon8_adjust_voltage_info(avalon8, setting);
 	}
 
+	if (strcasecmp(option, "target-temp") == 0) {
+		if (!setting || !*setting) {
+			sprintf(replybuf, "missing target temperature info");
+			return replybuf;
+		}
+
+		return set_avalon8_target_temp_info(avalon8, setting);
+	}
+
 	sprintf(replybuf, "Unknown option: %s", option);
 	return replybuf;
 }
@@ -3014,7 +3293,7 @@ static void avalon8_statline_before(char *buf, size_t bufsiz, struct cgpu_info *
 struct device_drv avalon8_drv = {
 	.drv_id = DRIVER_avalon8,
 	.dname = "avalon8",
-	.name = "AV8",
+	.name = "AV9",
 	.set_device = avalon8_set_device,
 	.get_api_stats = avalon8_api_stats,
 	.get_statline_before = avalon8_statline_before,

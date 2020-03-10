@@ -2401,7 +2401,7 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 									opt_avalon8_adjust_freq_down_factor,
 									opt_avalon8_adjust_freq_down_threshold,
 									opt_avalon8_adjust_freq_time);
-			} else {
+			} /*else {
 				avalon8_set_adjust_freq_option(avalon8, i,
 									opt_avalon821_adjust_freq_up_init,
 									opt_avalon821_adjust_freq_up_factor,
@@ -2410,7 +2410,7 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 									opt_avalon821_adjust_freq_down_factor,
 									opt_avalon821_adjust_freq_down_threshold,
 									opt_avalon821_adjust_freq_time);
-			}
+			} */
 
 			avalon8_set_asic_otp(avalon8, i, info->set_asic_otp[i]);
 			for (j = 0; j < info->miner_count[i]; j++)

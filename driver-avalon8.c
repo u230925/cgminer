@@ -212,43 +212,43 @@ uint32_t cpm_table_point[] =
 
 struct avalon8_dev_description avalon8_dev_table[] = {
 	{
-		"911",
-		911,
+		"821",
+		821,
 		6,
 		34,
 		26,
 		{
 			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_462M,
-			AVA8_DEFAULT_FREQUENCY_512M,
-			AVA8_DEFAULT_FREQUENCY_562M
-		}
-	},
-	{
-		"910",
-		910,
-		6,
-		34,
-		26,
-		{
 			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_475M,
-			AVA8_DEFAULT_FREQUENCY_525M,
-			AVA8_DEFAULT_FREQUENCY_575M
-		}
-	},
-	{
-		"910S",
-		910,
-		6,
-		34,
-		26,
-		{
 			AVA8_DEFAULT_FREQUENCY_0M,
-			AVA8_DEFAULT_FREQUENCY_462M,
-			AVA8_DEFAULT_FREQUENCY_512M,
-			AVA8_DEFAULT_FREQUENCY_562M
+			AVA8_DEFAULT_FREQUENCY_250M
 		}
+//	},
+//	{
+//		"910",
+//		910,
+//		6,
+//		34,
+//		26,
+//		{
+//			AVA8_DEFAULT_FREQUENCY_0M,
+//			AVA8_DEFAULT_FREQUENCY_475M,
+//			AVA8_DEFAULT_FREQUENCY_525M,
+//			AVA8_DEFAULT_FREQUENCY_575M
+//		}
+//	},
+//	{
+//		"910S",
+//		910,
+//		6,
+//		34,
+//		26,
+//		{
+//			AVA8_DEFAULT_FREQUENCY_0M,
+//			AVA8_DEFAULT_FREQUENCY_462M,
+//			AVA8_DEFAULT_FREQUENCY_512M,
+//			AVA8_DEFAULT_FREQUENCY_562M
+//		}
 	}
 };
 
@@ -1591,7 +1591,7 @@ static void detect_modules(struct cgpu_info *avalon8)
 			}
 		}
 
-		if (!strncmp((char *)&(info->mm_version[i]), "910S", 4)) {
+		if (!strncmp((char *)&(info->mm_version[i]), "821S", 4)) {
 			dev_index++;
 			info->mod_type[i] = avalon8_dev_table[dev_index].mod_type;
 			info->miner_count[i] = avalon8_dev_table[dev_index].miner_count;
@@ -1613,12 +1613,12 @@ static void detect_modules(struct cgpu_info *avalon8)
 		info->temp_overheat[i] = AVA8_DEFAULT_TEMP_OVERHEAT;
 
 		/* A911 target temperatuer */
-		if (!strncmp((char *)&(info->mm_version[i]), "911", 3)) {
+		if (!strncmp((char *)&(info->mm_version[i]), "821", 3)) {
 			if (info->mm_version[i][3] == 'V')
 				info->temp_target[i] = AVA821V_DEFAULT_TEMP_TARGET;
 			else
 				info->temp_target[i] = opt_avalon8_temp_target;
-		} else if (!strncmp((char *)&(info->mm_version[i]), "910", 3)) {
+		} else if (!strncmp((char *)&(info->mm_version[i]), "821", 3)) {
 			if (opt_avalon8_temp_target != AVA8_DEFAULT_TEMP_TARGET)
 				info->temp_target[i] = opt_avalon8_temp_target;
 			else
@@ -2343,7 +2343,7 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 				update_settings = true;
 
 				/* A911 may modify frequency value */
-				if (!strncmp((char *)&(info->mm_version[i]), "911", 3)) {
+				if (!strncmp((char *)&(info->mm_version[i]), "821", 3)) {
 					for (j = 0; j < info->miner_count[i]; j++) {
 						for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++) {
 							/* Avalon911 Fixed power and don't set freq */
@@ -2392,7 +2392,7 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 								opt_avalon8_adjust_volt_time);
 
 			/* A911 and A910 have different the adjusting frequrence parameters */
-			if (!strncmp((char *)&(info->mm_version[i]), "911", 3)) {
+			if (!strncmp((char *)&(info->mm_version[i]), "821", 3)) {
 				avalon8_set_adjust_freq_option(avalon8, i,
 									opt_avalon8_adjust_freq_up_init,
 									opt_avalon8_adjust_freq_up_factor,

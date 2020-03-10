@@ -103,14 +103,6 @@ uint32_t opt_avalon8_adjust_freq_down_factor = AVA8_DEFAULT_ADJUST_FREQ_DOWN_FAC
 uint32_t opt_avalon8_adjust_freq_down_threshold = AVA8_DEFAULT_ADJUST_FREQ_DOWN_THRESHOLD;
 uint32_t opt_avalon8_adjust_freq_time = AVA8_DEFAULT_ADJUST_FREQ_TIME;
 
-/* A910 adjust frequence parameters */
-int32_t opt_avalon821_adjust_freq_up_init = AVA821_DEFAULT_ADJUST_FREQ_UP_INIT;
-uint32_t opt_avalon821_adjust_freq_up_factor = AVA821_DEFAULT_ADJUST_FREQ_UP_FACTOR;
-uint32_t opt_avalon821_adjust_freq_up_threshold = AVA821_DEFAULT_ADJUST_FREQ_UP_THRESHOLD;
-int32_t opt_avalon821_adjust_freq_down_init = AVA821_DEFAULT_ADJUST_FREQ_DOWN_INIT;
-uint32_t opt_avalon821_adjust_freq_down_factor = AVA821_DEFAULT_ADJUST_FREQ_DOWN_FACTOR;
-uint32_t opt_avalon821_adjust_freq_down_threshold = AVA821_DEFAULT_ADJUST_FREQ_DOWN_THRESHOLD;
-uint32_t opt_avalon821_adjust_freq_time = AVA821_DEFAULT_ADJUST_FREQ_TIME;
 
 uint32_t cpm_table[] =
 {

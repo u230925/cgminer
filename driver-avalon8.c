@@ -222,32 +222,7 @@ struct avalon8_dev_description avalon8_dev_table[] = {
 			AVA8_DEFAULT_FREQUENCY_100M,
 			AVA8_DEFAULT_FREQUENCY_250M
 		}
-//	},
-//	{
-//		"910",
-//		910,
-//		6,
-//		34,
-//		26,
-//		{
-//			AVA8_DEFAULT_FREQUENCY_0M,
-//			AVA8_DEFAULT_FREQUENCY_475M,
-//			AVA8_DEFAULT_FREQUENCY_525M,
-//			AVA8_DEFAULT_FREQUENCY_575M
-//		}
-//	},
-//	{
-//		"910S",
-//		910,
-//		6,
-//		34,
-//		26,
-//		{
-//			AVA8_DEFAULT_FREQUENCY_0M,
-//			AVA8_DEFAULT_FREQUENCY_462M,
-//			AVA8_DEFAULT_FREQUENCY_512M,
-//			AVA8_DEFAULT_FREQUENCY_562M
-//		}
+
 	}
 };
 

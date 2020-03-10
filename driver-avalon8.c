@@ -104,13 +104,13 @@ uint32_t opt_avalon8_adjust_freq_down_threshold = AVA8_DEFAULT_ADJUST_FREQ_DOWN_
 uint32_t opt_avalon8_adjust_freq_time = AVA8_DEFAULT_ADJUST_FREQ_TIME;
 
 /* A910 adjust frequence parameters */
-int32_t opt_avalon821_adjust_freq_up_init = AVA810_DEFAULT_ADJUST_FREQ_UP_INIT;
-uint32_t opt_avalon821_adjust_freq_up_factor = AVA810_DEFAULT_ADJUST_FREQ_UP_FACTOR;
-uint32_t opt_avalon821_adjust_freq_up_threshold = AVA810_DEFAULT_ADJUST_FREQ_UP_THRESHOLD;
-int32_t opt_avalon821_adjust_freq_down_init = AVA810_DEFAULT_ADJUST_FREQ_DOWN_INIT;
-uint32_t opt_avalon821_adjust_freq_down_factor = AVA810_DEFAULT_ADJUST_FREQ_DOWN_FACTOR;
-uint32_t opt_avalon821_adjust_freq_down_threshold = AVA810_DEFAULT_ADJUST_FREQ_DOWN_THRESHOLD;
-uint32_t opt_avalon821_adjust_freq_time = AVA810_DEFAULT_ADJUST_FREQ_TIME;
+int32_t opt_avalon821_adjust_freq_up_init = AVA821_DEFAULT_ADJUST_FREQ_UP_INIT;
+uint32_t opt_avalon821_adjust_freq_up_factor = AVA821_DEFAULT_ADJUST_FREQ_UP_FACTOR;
+uint32_t opt_avalon821_adjust_freq_up_threshold = AVA821_DEFAULT_ADJUST_FREQ_UP_THRESHOLD;
+int32_t opt_avalon821_adjust_freq_down_init = AVA821_DEFAULT_ADJUST_FREQ_DOWN_INIT;
+uint32_t opt_avalon821_adjust_freq_down_factor = AVA821_DEFAULT_ADJUST_FREQ_DOWN_FACTOR;
+uint32_t opt_avalon821_adjust_freq_down_threshold = AVA821_DEFAULT_ADJUST_FREQ_DOWN_THRESHOLD;
+uint32_t opt_avalon821_adjust_freq_time = AVA821_DEFAULT_ADJUST_FREQ_TIME;
 
 uint32_t cpm_table[] =
 {
@@ -905,9 +905,9 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 		/* A911S/A910S overpower set target temperatrue, A911S flag: 0, A910S flag: 1 */
 		if (info->factory_info[modular_id][0]) {
 			if (opt_avalon821_fac_bin4_flag)
-				info->temp_target[modular_id] = AVA810S_DEFAULT_TEMP_TARGET;
+				info->temp_target[modular_id] = AVA821S_DEFAULT_TEMP_TARGET;
 			else
-				info->temp_target[modular_id] = AVA811S_DEFAULT_TEMP_TARGET;
+				info->temp_target[modular_id] = AVA821S_DEFAULT_TEMP_TARGET;
 		}
 
 		info->factory_info[modular_id][AVA8_DEFAULT_FACTORY_INFO_CNT] = ar->data[1];
@@ -1623,14 +1623,14 @@ static void detect_modules(struct cgpu_info *avalon8)
 		/* A911 target temperatuer */
 		if (!strncmp((char *)&(info->mm_version[i]), "911", 3)) {
 			if (info->mm_version[i][3] == 'V')
-				info->temp_target[i] = AVA811V_DEFAULT_TEMP_TARGET;
+				info->temp_target[i] = AVA821V_DEFAULT_TEMP_TARGET;
 			else
 				info->temp_target[i] = opt_avalon8_temp_target;
 		} else if (!strncmp((char *)&(info->mm_version[i]), "910", 3)) {
 			if (opt_avalon8_temp_target != AVA8_DEFAULT_TEMP_TARGET)
 				info->temp_target[i] = opt_avalon8_temp_target;
 			else
-				info->temp_target[i] = AVA810_DEFAULT_TEMP_TARGET;
+				info->temp_target[i] = AVA821_DEFAULT_TEMP_TARGET;
 
 			/* FAC vaule for 1, A910 target temperature for BIN4 */
 			opt_avalon821_fac_bin4_flag = 1;

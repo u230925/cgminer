@@ -1511,7 +1511,7 @@ static struct opt_table opt_config_table[] = {
 		     opt_set_bool, &opt_avalon7_ssplus_enable,
 		     "Enable avalon7 smart speed plus."),
 #endif
-#ifdef USE_AVALON9
+#ifdef USE_AVALON8
 	OPT_WITH_CBARG("--avalon8-voltage-level",
 		     set_avalon8_voltage_level, NULL, &opt_set_avalon8_voltage_level,
 		     "Set Avalon8 default level of core voltage, range:[0, 35], step: 1"),

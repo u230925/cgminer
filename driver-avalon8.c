@@ -215,7 +215,7 @@ struct avalon8_dev_description avalon8_dev_table[] = {
 		"821",
 		821,
 		4,
-		26,
+		26
 		{
 			AVA8_DEFAULT_FREQUENCY_0M,
 			AVA8_DEFAULT_FREQUENCY_50M,

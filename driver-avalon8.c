@@ -30,7 +30,7 @@ int opt_avalon8_asic_otp = AVA8_INVALID_ASIC_OTP;
 static uint8_t opt_avalon8_cycle_hit_flag;
 
 /* Use to distinguish fac value for A911 and A910 */
-static uint8_t opt_avalon821_fac_bin4_flag = 0;
+static uint8_t opt_avalon8_fac_bin4_flag = 0;
 
 int opt_avalon8_freq[AVA8_DEFAULT_PLL_CNT] =
 {
@@ -41,7 +41,7 @@ int opt_avalon8_freq[AVA8_DEFAULT_PLL_CNT] =
 };
 
 /* Default frequency for Fixed power */
-int opt_avalon821_freq[AVA8_DEFAULT_PLL_CNT] =
+int opt_avalon8_freq[AVA8_DEFAULT_PLL_CNT] =
 {
 	AVA8_DEFAULT_FREQUENCY_0M,
 	AVA8_DEFAULT_FREQUENCY_0M,
@@ -895,7 +895,7 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 
 		/* A911S/A910S overpower set target temperatrue, A911S flag: 0, A910S flag: 1 */
 		if (info->factory_info[modular_id][0]) {
-			if (opt_avalon821_fac_bin4_flag)
+			if (opt_avalon8_fac_bin4_flag)
 				info->temp_target[modular_id] = AVA821S_DEFAULT_TEMP_TARGET;
 			else
 				info->temp_target[modular_id] = AVA821S_DEFAULT_TEMP_TARGET;
@@ -1624,7 +1624,7 @@ static void detect_modules(struct cgpu_info *avalon8)
 				info->temp_target[i] = AVA821_DEFAULT_TEMP_TARGET;
 
 			/* FAC vaule for 1, A910 target temperature for BIN4 */
-			opt_avalon821_fac_bin4_flag = 1;
+			opt_avalon8_fac_bin4_flag = 1;
 		}
 
 		info->fan_pct[i] = opt_avalon8_fan_min;
@@ -2347,13 +2347,13 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 						for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++) {
 							/* Avalon911 Fixed power and don't set freq */
 							if ((info->mm_version[i][3] != 'V') && (opt_avalon8_freq[k] == AVA8_DEFAULT_FREQUENCY))
-								info->set_frequency[i][j][k] = opt_avalon821_freq[k];
+								info->set_frequency[i][j][k] = opt_avalon8_freq[k];
 							else if (opt_avalon8_freq[k] != AVA8_DEFAULT_FREQUENCY)
 								info->set_frequency[i][j][k] = opt_avalon8_freq[k];
 						}
 					}
 				} else {
-					/* Avalon910 and avalon821S may modify frequency value*/
+					/* Avalon910 and avalon8S may modify frequency value*/
 					for (j = 0; j < info->miner_count[i]; j++) {
 						for (k = 0; k < AVA8_DEFAULT_PLL_CNT; k++) {
 							if (opt_avalon8_freq[k] != AVA8_DEFAULT_FREQUENCY)
@@ -2402,13 +2402,13 @@ static int64_t avalon8_scanhash(struct thr_info *thr)
 									opt_avalon8_adjust_freq_time);
 			} /*else {
 				avalon8_set_adjust_freq_option(avalon8, i,
-									opt_avalon821_adjust_freq_up_init,
-									opt_avalon821_adjust_freq_up_factor,
-									opt_avalon821_adjust_freq_up_threshold,
-									opt_avalon821_adjust_freq_down_init,
-									opt_avalon821_adjust_freq_down_factor,
-									opt_avalon821_adjust_freq_down_threshold,
-									opt_avalon821_adjust_freq_time);
+									opt_avalon8_adjust_freq_up_init,
+									opt_avalon8_adjust_freq_up_factor,
+									opt_avalon8_adjust_freq_up_threshold,
+									opt_avalon8_adjust_freq_down_init,
+									opt_avalon8_adjust_freq_down_factor,
+									opt_avalon8_adjust_freq_down_threshold,
+									opt_avalon8_adjust_freq_time);
 			} */
 
 			avalon8_set_asic_otp(avalon8, i, info->set_asic_otp[i]);

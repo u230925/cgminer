@@ -41,13 +41,13 @@ int opt_avalon8_freq[AVA8_DEFAULT_PLL_CNT] =
 };
 
 /* Default frequency for Fixed power */
-int opt_avalon8_freq[AVA8_DEFAULT_PLL_CNT] =
+/*int opt_avalon8_freq[AVA8_DEFAULT_PLL_CNT] =
 {
 	AVA8_DEFAULT_FREQUENCY_0M,
 	AVA8_DEFAULT_FREQUENCY_0M,
 	AVA8_DEFAULT_FREQUENCY_0M,
 	AVA8_DEFAULT_FREQUENCY_250M
-};
+};*/
 
 int opt_avalon8_freq_sel = AVA8_DEFAULT_FREQUENCY_SEL;
 

@@ -1600,7 +1600,7 @@ static struct opt_table opt_config_table[] = {
 		     "Set Avalon8 pid-d, range 0-9999."),
 	OPT_WITH_ARG("--avalon8-target-diff",
 		     set_int_1_to_65535, opt_show_intval, &opt_avalon8_target_diff,
-		     "Set Avalon8 target difficulty, range 1-1000000"),
+		     "Set Avalon8 target difficulty, range 1-65535"),
 	OPT_WITH_CBARG("--avalon8-adj",
 		     set_avalon8_adj, NULL, &opt_set_avalon8_adj,
 		     "Set Avalon8 adjust control params"),

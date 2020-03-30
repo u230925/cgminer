@@ -72,6 +72,8 @@ uint32_t opt_avalon8_pid_p = AVA8_DEFAULT_PID_P;
 uint32_t opt_avalon8_pid_i = AVA8_INVALID_PID_I;
 uint32_t opt_avalon8_pid_d = AVA8_DEFAULT_PID_D;
 
+uint32_t opt_avalon8_target_diff = AVA8_DRV_DIFFMAX;
+
 /* power mode select: 0, normal mode; 1, low mode. */
 uint32_t opt_avalon8_power_mode_sel = AVA8_POWER_MODE_NORMAL;
 
@@ -1521,10 +1523,12 @@ static void avalon8_stratum_pkgs(struct cgpu_info *avalon8, struct pool *pool)
 	if (avalon8_send_bc_pkgs(avalon8, &pkg))
 		return;
 
-	if (pool->sdiff <= AVA8_DRV_DIFFMAX)
+	if (pool->sdiff <= opt_avalon8_target_diff) {
 		set_target(target, pool->sdiff);
-	else
-		set_target(target, AVA8_DRV_DIFFMAX);
+		opt_avalon8_target_diff = pool->sdiff;
+	} else {
+		set_target(target, opt_avalon8_target_diff);
+	}
 
 	memcpy(pkg.data, target, 32);
 	if (opt_debug) {
@@ -1627,6 +1631,7 @@ static struct cgpu_info *avalon8_iic_detect(void)
 	avalon8->drv = &avalon8_drv;
 	avalon8->deven = DEV_ENABLED;
 	avalon8->threads = 1;
+	avalon8->drv->max_diff = opt_avalon8_target_diff;
 	add_cgpu(avalon8);
 
 	applog(LOG_INFO, "%s-%d: Found at %s", avalon8->drv->name, avalon8->device_id,
@@ -2136,6 +2141,11 @@ static void copy_pool_stratum(struct pool *pool_stratum, struct pool *pool)
 
 	memcpy(pool_stratum->ntime, pool->ntime, sizeof(pool_stratum->ntime));
 	memcpy(pool_stratum->header_bin, pool->header_bin, sizeof(pool_stratum->header_bin));
+
+	memcpy(pool_stratum->vmask_001, pool->vmask_001, sizeof(pool_stratum->vmask_001));
+	memcpy(pool_stratum->vmask_002, pool->vmask_002, sizeof(pool_stratum->vmask_002));
+	memcpy(pool_stratum->vmask_003, pool->vmask_003, sizeof(pool_stratum->vmask_003));
+
 	cg_wunlock(&pool_stratum->data_lock);
 }
 
@@ -3998,7 +4008,7 @@ static void avalon8_statline_before(char *buf, size_t bufsiz, struct cgpu_info *
 			temp = get_temp_max(info, i);
 
 		mhsmm = avalon8_hash_cal(avalon8, i);
-		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 172));
+		frequency += (mhsmm / (info->asic_count[i] * info->miner_count[i] * 236));
 		ghs_sum += (mhsmm / 1000);
 
 		if ((!strncmp((char *)&(info->mm_version[i]), "851", 3)) ||

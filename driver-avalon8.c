@@ -753,7 +753,8 @@ static int decode_pkg(struct cgpu_info *avalon8, struct avalon8_ret *ar, int mod
 		info->local_works_i[modular_id][ar->idx] += be32toh(tmp);
 
 		memcpy(&tmp, ar->data + 12, 4);
-		info->hw_works_i[modular_id][ar->idx] += be32toh(tmp);
+		if (tmp)
+			info->fan_pct[modular_id] = be32toh(tmp);
 
 		memcpy(&tmp, ar->data + 16, 4);
 		info->error_code[modular_id][ar->idx] = be32toh(tmp);
@@ -1852,6 +1853,16 @@ static void avalon8_init_setting(struct cgpu_info *avalon8, int addr)
 
 	memset(send_pkg.data, 0, AVA8_P_DATA_LEN);
 
+	send_pkg.data[0] = opt_avalon8_fan_min & 0xff;
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set fanmin %u",
+			avalon8->drv->name, avalon8->device_id, addr,
+			opt_avalon8_fan_min);
+
+	send_pkg.data[1] = opt_avalon8_fan_max & 0xff;
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set fanmax %u",
+			avalon8->drv->name, avalon8->device_id, addr,
+			opt_avalon8_fan_max);
+
 	tmp = be32toh(opt_avalon8_freq_sel);
 	memcpy(send_pkg.data + 4, &tmp, 4);
 
@@ -1898,6 +1909,11 @@ static void avalon8_init_setting(struct cgpu_info *avalon8, int addr)
 	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set spdhigh %u",
 			avalon8->drv->name, avalon8->device_id, addr,
 			opt_avalon8_spdhigh);
+
+	send_pkg.data[31] = opt_avalon8_temp_target & 0xff;
+	applog(LOG_DEBUG, "%s-%d-%d: avalon8 set temptarget %u",
+			avalon8->drv->name, avalon8->device_id, addr,
+			opt_avalon8_temp_target);
 
 	/* Package the data */
 	avalon8_init_pkg(&send_pkg, AVA8_P_SET, 1, 1);
